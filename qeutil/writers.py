@@ -1,3 +1,5 @@
+from tempfile import mkdtemp
+
 # PWscf input file
 pw_in='''
 &CONTROL
@@ -94,30 +96,27 @@ def make_calc_dir(bdir,params):
     
     '''
     
-    cdir=params['prefix']+'.XXXX'
-    cdir=!cd $bdir ; mktemp -d $cdir
-    cdir=cdir[0]
-    bcdir='calc/'+cdir
+    bcdir=mkdtemp(prefix=params['prefix']+'.',dir=bdir)
+    cdir=os.path.split(bcdir)[1]
     #print cdir, bcdir
     
-    open(bdir + cdir +'/pw.in','w').write(pw_in % params)
-    open(bdir + cdir +'/ph.in','w').write(ph_in % params)
-    open(bdir + cdir +'/q2r.in','w').write(q2r_in % params)
-    f=open(bdir + cdir+'/matdyn.in','w')
+    open(os.path.join(bcdir,'pw.in'),'w').write(pw_in % params)
+    open(os.path.join(bcdir,'ph.in'),'w').write(ph_in % params)
+    open(os.path.join(bcdir,'q2r.in'),'w').write(q2r_in % params)
+    f=open(os.path.join(bcdir,'matdyn.in'),'w')
     f.write(matdyn_in % params)
     f.write('%d\n'%qp.shape[0])
     for v in qp:
         f.write("%f %f %f %d\n" % (v[0],v[1],v[2],params['points']))
     f.close()
-    open(bdir+cdir+'/phdos.in','w').write(phdos_in % params)
+    open(os.path.join(bcdir,'phdos.in'),'w').write(phdos_in % params)
     return bcdir,cdir
 
-def make_D3_files(bdir,host,clc,cdat):
-    cdir = bdir + host + clc
-    open(cdir +'/phD3G.in','w').write(ph3G_in % cdat)
-    open(cdir +'/D3G.in','w').write(d3G_in % cdat)
-    open(cdir +('/phD3_%(sufix)s.in' % cdat),'w').write(ph3any_in % cdat)
-    open(cdir +('/D3_%(sufix)s.in' % cdat),'w').write(d3any_in % cdat)
+def make_D3_files(bdir,clc,cdat):
+    open(os.path.join(bdir,clc,'phD3G.in'),'w').write(ph3G_in % cdat)
+    open(os.path.join(bdir,clc,'D3G.in'),'w').write(d3G_in % cdat)
+    open(os.path.join(bdir,clc,('phD3_%(sufix)s.in' % cdat)),'w').write(ph3any_in % cdat)
+    open(os.path.join(bdir,clc,('D3_%(sufix)s.in' % cdat)),'w').write(d3any_in % cdat)
     
     
     
