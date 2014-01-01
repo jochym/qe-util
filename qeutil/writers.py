@@ -12,19 +12,16 @@ pw_in='''
 &SYSTEM
     A = %(A)f,
     ecutwfc = %(ecut)f,
-    ibrav = 2,
-    nat = 3,
-    ntyp = 2,
+    ibrav = %(ibrav)d,
+    nat = %(nat)d,
+    ntyp = %(ntyp)d,
 /
 &ELECTRONS
 /
 ATOMIC_SPECIES
- Th 232.038100 Th_%(XC)s_nc.ncpp
- O 15.999400 O_%(XC)s_nc.ncpp
+    %(at_species)s
 ATOMIC_POSITIONS
- Th 0.000000  0.000000  0.000000
- O 0.250000  0.250000  0.250000
- O -0.250000  -0.250000  -0.250000
+    %(at_positions)s
 K_POINTS automatic
    %(kx)d %(ky)d %(kz)d   %(shift)d %(shift)d %(shift)d
 '''
@@ -65,9 +62,9 @@ phdos_in='''
     asr='%(asr)s',  
     flfrc='%(prefix)s.fc', 
     fldos='%(prefix)s.dos',
-    nk1=15,
-    nk2=15,
-    nk3=15,
+    nk1=%(doskx)d,
+    nk2=%(dosky)d,
+    nk3=%(doskz)d,
     ndos=%(ndos)d
  /
 '''

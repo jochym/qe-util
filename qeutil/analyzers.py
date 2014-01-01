@@ -1,3 +1,17 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+from numpy import array
+
+# Special points in FCC lattice
+G1=[0,0,0]
+G2=[1,1,1]
+L=[1/2.0,1/2.0,1/2.0]
+W=[1,1./2,3./2]
+X=[0,0,1]
+XP=[1,1,0]
+qpath=array([G1,X,G2,L])
+
 def get_EOS(d, comment=""):
     # Fitting functions
     def BMEOS(v,v0,b0,b0p):
