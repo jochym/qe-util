@@ -40,9 +40,10 @@ class QuantumEspresso(FileIOCalculator):
     
     pw_cmd='pw.x <pw.in >pw.out'
     ph_cmd='ph.x <ph.in >ph.out'
-    matdyn_cmd='matdyn.x'
-    q2r_cmd='q2r.x'
-    
+    matdyn_cmd='matdyn.x <matdyn.in >matdyn.out'
+    phdos_cmd= 'matdyn.x <phdos.in  >phdos.out'
+    q2r_cmd='q2r.x <q2r.in >q2r.out'
+
     # Command for copying the data out to the computing system
     copy_out_cmd=''
     
@@ -51,6 +52,8 @@ class QuantumEspresso(FileIOCalculator):
     # to use the rsync command to transfer the results back into the system.
     copy_in_cmd=''
     
+    # Queue system submit command
+    qsub_cmd=''
 
     default_parameters = {
                 'calc':'scf',
