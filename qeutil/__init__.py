@@ -5,8 +5,6 @@
 http://www.quantum-espresso.org/
 """
 
-
-
 import os
 from glob import glob
 from os.path import join, isfile, islink
@@ -25,6 +23,7 @@ from writers import *
 from qeio import *
 from analyzers import *
 
+# The exception for the calc runnin but not ready.
 class CalcNotReadyError(Exception):
     pass
 
@@ -38,6 +37,20 @@ class QuantumEspresso(FileIOCalculator):
     """
 
     implemented_properties = ['energy', 'forces', 'stress']
+    
+    pw_cmd='pw.x <pw.in >pw.out'
+    ph_cmd='ph.x <ph.in >ph.out'
+    matdyn_cmd='matdyn.x'
+    q2r_cmd='q2r.x'
+    
+    # Command for copying the data out to the computing system
+    copy_out_cmd=''
+    
+    # Command for copying the data in after the calculation
+    # If you cannot mount the data directory into your system it is best 
+    # to use the rsync command to transfer the results back into the system.
+    copy_in_cmd=''
+    
 
     default_parameters = {
                 'calc':'scf',
@@ -54,20 +67,10 @@ class QuantumEspresso(FileIOCalculator):
     }
     'Default parameters'
 
-    def __init__(self,label=None,atoms=None,
-                    pw_cmd='pw.x <pw.in >pw.out',
-                    ph_cmd='ph.x <ph.in >ph.out',
-                    matdyn_cmd='matdyn.x',
-                    q2r_cmd='q2r.x',
-                    wdir='./',
-                    **kwargs):
+    def __init__(self,label=None,atoms=None, wdir='./', **kwargs):
         FileIOCalculator.__init__(self,label=label,atoms=atoms,command=None,**kwargs)
         self.label=label
         self.prefix=label
-        self.pw_cmd=pw_cmd
-        self.ph_cmd=ph_cmd
-        self.matdyn_cmd=matdyn_cmd
-        self.q2r_cmd=q2r_cmd
         self.directory=make_calc_dir(self.prefix,wdir)
         self.submited=False
         print self.directory
