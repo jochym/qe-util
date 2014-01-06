@@ -58,6 +58,7 @@ class QuantumEspresso(FileIOCalculator):
     default_parameters = {
                 'calc':'scf',
                 'outdir': 'tmp',
+                'wfcdir': 'tmp',
                 'asr':'crystal',
                 'pseudo_dir': '../pspot',
                 'ndos': 200,
@@ -66,7 +67,10 @@ class QuantumEspresso(FileIOCalculator):
                 'ecutwfc': 50,
                 'ibrav': 0,
                 'pp_type': 'nc',
-                'pp_format': 'ncpp'
+                'pp_format': 'ncpp',
+                'use_symmetry': False,
+                'kpt_type': 'automatic',
+                'kpt_shift': [0,0,0]
     }
     'Default parameters'
 
@@ -76,7 +80,7 @@ class QuantumEspresso(FileIOCalculator):
         self.prefix=label
         self.directory=make_calc_dir(self.prefix,wdir)
         self.submited=False
-        print self.directory
+        self.use_symmetry=self.parameters['use_symmetry']
 
     def calculate(self, atoms=None, properties=['energy'],
                   system_changes=all_changes):
