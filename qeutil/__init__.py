@@ -76,14 +76,22 @@ class QuantumEspresso(FileIOCalculator):
                   system_changes=all_changes):
         if self.submited :
             raise CalcNotReadyError
-        if {'energy','stress'} and set(properties) :
-            self.command=self.pw_cmd
-            try :
+        try :
+            if {'energy','stress'} and set(properties) :
+                self.command=self.pw_cmd
                 FileIOCalculator.calculate(self, atoms, 
                     list({'energy','stress'} and set(properties)),
                     system_changes)
-            except CalcNotReadyError :
-                self.submited=True
+            elif 'phonons' in properties :
+                self.calculate(self, atoms, ['energy'], system_changes)
+                FileIOCalculator.calculate(self, atoms, ['phonons'], system_changes)
+        except CalcNotReadyError :
+            # The command finished without error but the 
+            # results are not ready. 
+            # We assume this is a remote job submitted to 
+            # some queuing system.
+            self.submited=True
+
             
 
     def write_input(self, atoms, properties=None, system_changes=None):
