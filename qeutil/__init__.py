@@ -88,7 +88,7 @@ class QuantumEspresso(FileIOCalculator):
             raise CalcNotReadyError
         try :
             if {'energy','stress'} and set(properties) :
-                self.command=self.pw_cmd
+                self.command=self.pw_cmd % {'infile':'pw.in', 'outfile':'pw.out'}
                 FileIOCalculator.calculate(self, atoms, 
                     list({'energy','stress'} and set(properties)),
                     system_changes)
