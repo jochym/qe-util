@@ -3,6 +3,7 @@ import os
 from tempfile import mkdtemp
 from pyspglib import spglib
 from numpy.linalg import norm
+from numpy import array
 from math import sqrt
 from ase import Atoms
 
@@ -166,12 +167,18 @@ def write_cell_params(fh, a, p):
     if sgn >= 195 :
         # Cubic lattice
         if   ltyp=='P':  p['ibrav']=1  # Primitive
-        elif ltyp=='F':  p['ibrav']=2  # FCC
-        elif ltyp=='I':  p['ibrav']=3  # FCC
+        elif ltyp=='F':  
+            p['ibrav']=2  # FCC
+            qepc=array([[-1,0,1],[0,1,1],[-1,1,0]])/2.0
+        elif ltyp=='I':  
+            p['ibrav']=3  # BCC
+            qepc=array([[1,1,1],[-1,1,1],[-1,-1,1]])/2.0
         else :
             print 'Impossible lattice symmetry! Contact the author!'
             raise NotImplementedError
-        fh.write('      A = %f,\n' % (sqrt(2)*norm(cell[0]),))
+        a=sqrt(2)*norm(cell[0])
+        qepc=a*qepc
+        fh.write('      A = %f,\n' % (a,))
     elif sgn >= 143 :
         # Hexagonal and trigonal 
         if   ltyp=='P' :  p['ibrav']=4  # Primitive
@@ -183,7 +190,11 @@ def write_cell_params(fh, a, p):
         raise NotImplementedError
     else :
         raise NotImplementedError
-    return puc
+    cp=Atoms(cell=puc[0], scaled_positions=puc[1], numbers=puc[2], pbc=True)
+    qepc=Atoms(cell=qepc, 
+        positions=cp.get_positions(), 
+        numbers=cp.get_atomic_numbers(), pbc=True)
+    return qepc.get_cell(), qepc.get_scaled_positions(), qepc.get_atomic_numbers()
 
 
 def write_pw_in(d,a,p):
@@ -250,11 +261,12 @@ def write_pw_in(d,a,p):
     # ----------------------------------------------------------
     # Card: CELL_PARAMETERS
     # ----------------------------------------------------------
-    
-    fh.write('CELL_PARAMETERS angstrom\n')
-    
-    for v in cr.get_cell():
-        fh.write('    %f %f %f\n' % tuple(v))
+    # Write out only if ibrav==0 - no symmetry used
+    if p['ibrav']==0 :
+        fh.write('CELL_PARAMETERS angstrom\n')
+        
+        for v in cr.get_cell():
+            fh.write('    %f %f %f\n' % tuple(v))
         
     # ----------------------------------------------------------
     # Card: K_POINTS
