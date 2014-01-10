@@ -223,6 +223,7 @@ def write_pw_in(d,a,p):
         cr=Atoms(cell=primcell[0],scaled_positions=primcell[1],numbers=primcell[2],pbc=True)
     else :
         cr=a
+        p['ibrav']=0
     fh.write("    nat = %d\n" % (cr.get_number_of_atoms()))
     fh.write("    ntyp = %d\n" % (len(set(cr.get_atomic_numbers()))))
     pwin_k=['ecutwfc','ibrav']
@@ -262,7 +263,7 @@ def write_pw_in(d,a,p):
     # Card: CELL_PARAMETERS
     # ----------------------------------------------------------
     # Write out only if ibrav==0 - no symmetry used
-    if p['ibrav']==0 :
+    if not p['use_symmetry']:
         fh.write('CELL_PARAMETERS angstrom\n')
         
         for v in cr.get_cell():

@@ -26,6 +26,8 @@ from writers import *
 from qeio import *
 from analyzers import *
 
+import copy
+
 # The exception for the calc runnin but not ready.
 class CalcNotReadyError(Exception):
     pass
@@ -61,7 +63,7 @@ class QuantumEspresso(FileIOCalculator):
                 'ibrav': 0,
                 'pp_type': 'nc',
                 'pp_format': 'ncpp',
-                'use_symmetry': False,
+                'use_symmetry': True,
                 'kpt_type': 'automatic',
                 'kpt_shift': [0,0,0],
                 'procs': 1
@@ -75,11 +77,16 @@ class QuantumEspresso(FileIOCalculator):
         self.wdir=wdir
         self.directory=make_calc_dir(self.prefix,wdir)
         self.submited=False
-        self.use_symmetry=self.parameters['use_symmetry']
 
+    def copy(self):
+        c=copy.deepcopy(self)
+        c.directory=make_calc_dir(c.prefix,c.wdir)
+        return c
 
-    def build_command(self,prop='scf'):
-        return self.pw_cmd % {'infile':'pw.in', 'outfile':'pw.out'}
+    def build_command(self, prop='scf', infile='pw.in', outfile='pw.out', params={}):
+        params=params.copy()
+        params.update({'prop': prop, 'infile': infile, 'outfile': outfile})
+        return self.pw_cmd % params
 
     def run_calculation(self, atoms, properties, system_changes):
         FileIOCalculator.calculate(self, atoms, properties, system_changes)
@@ -87,11 +94,13 @@ class QuantumEspresso(FileIOCalculator):
     def calculate(self, atoms=None, properties=['energy'],
                   system_changes=all_changes):
 
-       if {'energy','stress'} and set(properties) :
+        if {'energy','stress'} and set(properties) :
             self.command=self.build_command('scf')
             prop=list({'energy','stress'} and set(properties))
             self.run_calculation(atoms, prop, system_changes)
-       elif 'phonons' in properties :
+        elif 'bands' in properties :
+            raise NotImplementedError
+        elif 'phonons' in properties :
             #self.calculate(atoms, ['energy'], system_changes)
             #self.run_calculation(atoms, ['phonons'], system_changes)
             raise NotImplementedError
@@ -118,7 +127,7 @@ class QuantumEspresso(FileIOCalculator):
                 # Job is done we can read the output
                 r=read_quantumespresso_textoutput(fn)
                 self.results['energy']=r['etotal']
-                s=array(r['stress'])* 1e-1 * ase.units.GPa
+                s=-array(r['stress'])* 1e-1 * ase.units.GPa
                 self.results['stress']=array([s[0, 0], s[1, 1], s[2, 2],
                                        s[1, 2], s[0, 2], s[0, 1]])
             else :
@@ -183,18 +192,16 @@ class RemoteQE(QuantumEspresso):
 
     def write_pbs_in(self):
         fh=open(os.path.join(self.directory,'run-pw.pbs'),'w')
-        
+
         fh.write(self.pbs_template % {
-            'pw_cmd': self.pw_cmd % {
-                'infile':'pw.in', 
-                'outfile':'pw.out',
-                'procs': self.parameters['procs']
-                }
-        })
+            'command': QuantumEspresso.build_command(self,prop='scf',
+                            infile='pw.in', outfile='pw.out',
+                            params=self.parameters)
+            })        
         
         fh.close()
 
-    def build_command(self,prop='scf'):
+    def build_command(self,prop='scf',**kwargs):
         cmd=self.qsub_cmd % {
             'title': self.label,
             'procs': self.parameters['procs'],
@@ -313,31 +320,30 @@ class RemoteQE(QuantumEspresso):
         # All is fine - read the results
         QuantumEspresso.read_results(self)
 
-
-
-def ParallelCalculate(syslst,properties=['energy'],system_changes=all_changes):
-    '''
-    Run a series of calculations in parallel using (implicitely) some 
-    remote machine/cluster. The function returns the list of systems ready
-    for the extraction of calculated properties.
-    '''
-    print 'Launching:',
-    sys.stdout.flush()
-    for n,s in enumerate(syslst):
-        try :
-            s.calc.block=False
-            s.calc.calculate(atoms=s,properties=properties,system_changes=system_changes)
-        except CalcNotReadyError:
-            s.calc.block=True
-        print n+1, 
+    @classmethod
+    def ParallelCalculate(cls,syslst,properties=['energy'],system_changes=all_changes):
+        '''
+        Run a series of calculations in parallel using (implicitely) some 
+        remote machine/cluster. The function returns the list of systems ready
+        for the extraction of calculated properties.
+        '''
+        print 'Launching:',
         sys.stdout.flush()
-    print
-    print '     Done:',
-    sys.stdout.flush()
-    for n,s in enumerate(syslst):
-        s.calc.read_results()
-        print n+1, 
+        for n,s in enumerate(syslst):
+            try :
+                s.calc.block=False
+                s.calc.calculate(atoms=s,properties=properties,system_changes=system_changes)
+            except CalcNotReadyError:
+                s.calc.block=True
+            print n+1, 
+            sys.stdout.flush()
+        print
+        print '     Done:',
         sys.stdout.flush()
-    print
-    return sys
+        for n,s in enumerate(syslst):
+            s.calc.read_results()
+            print n+1, 
+            sys.stdout.flush()
+        print
+        return syslst
 
