@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
     name='qeutil',
-    version='0.1.7',
+    version='0.1.8',
     packages=['qeutil',],
     license='GPLv3',
     description = 'A set of utilities for Quantum Espresso',
