@@ -5,6 +5,22 @@
 http://www.quantum-espresso.org/
 """
 
+#    Copyright 1998-2014 by Paweł T. Jochym <pawel.jochym@ifj.edu.pl>
+#
+#    qe-util is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+
+#    qe-util is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+
+#    You should have received a copy of the GNU General Public License
+#    along with Elastic.  If not, see <http://www.gnu.org/licenses/>.
+
+
 import os
 import sys
 from glob import glob
@@ -43,12 +59,19 @@ class QuantumEspresso(FileIOCalculator):
 
     implemented_properties = ['energy', 'forces', 'stress']
     
-    pw_cmd='pw.x <pw.in >pw.out'
-    ph_cmd='ph.x <ph.in >ph.out'
-    matdyn_cmd='matdyn.x <matdyn.in >matdyn.out'
-    phdos_cmd= 'matdyn.x <phdos.in  >phdos.out'
+    pw_cmd='mpiexec -n %(procs)d  pw.x <pw.in >pw.out'
+    ph_cmd='mpiexec -n %(procs)d  ph.x <ph.in >ph.out'
+    matdyn_cmd='mpiexec -n %(procs)d matdyn.x <matdyn.in >matdyn.out'
+    phdos_cmd= 'mpiexec -n %(procs)d matdyn.x <phdos.in  >phdos.out'
     q2r_cmd='q2r.x <q2r.in >q2r.out'
 
+    cmds={
+        'scf': pw_cmd,
+        'ph': ph_cmd,
+        'matdyn': matdyn_cmd,
+        'dos': phdos_cmd,
+        'q2r': q2r_cmd
+    }
 
     default_parameters = {
                 'calc':'scf',
@@ -83,10 +106,24 @@ class QuantumEspresso(FileIOCalculator):
         c.directory=make_calc_dir(c.prefix,c.wdir)
         return c
 
-    def build_command(self, prop='scf', infile='pw.in', outfile='pw.out', params={}):
+    def build_command(self, prop=['energy'], params={}):
         params=params.copy()
-        params.update({'prop': prop, 'infile': infile, 'outfile': outfile})
-        return self.pw_cmd % params
+        params.update({'prop': prop})
+        cmd=''
+        if {'energy','stress'} & set(prop):
+            cmd+= self.pw_cmd % params
+            cmd+='\n'
+        if 'phonons' in prop :
+            cmd+= self.ph_cmd % params
+            cmd+='\n#'
+            cmd+= self.q2r_cmd % params
+            cmd+='\n#'
+            cmd+= self.matdyn_cmd % params
+            cmd+='\n#'
+            cmd+= self.phdos_cmd % params
+            cmd+='\n'
+        return cmd
+            
 
     def run_calculation(self, atoms, properties, system_changes):
         FileIOCalculator.calculate(self, atoms, properties, system_changes)
@@ -94,26 +131,37 @@ class QuantumEspresso(FileIOCalculator):
     def calculate(self, atoms=None, properties=['energy'],
                   system_changes=all_changes):
 
-        if {'energy','stress'} and set(properties) :
-            self.command=self.build_command('scf')
-            prop=list({'energy','stress'} and set(properties))
+        if {'energy','stress'} & set(properties) :
+            print 'Energy'
+            self.command=self.build_command(properties,self.parameters)
+            prop=list({'energy','stress'} & set(properties))
             self.run_calculation(atoms, prop, system_changes)
         elif 'bands' in properties :
             raise NotImplementedError
         elif 'phonons' in properties :
-            #self.calculate(atoms, ['energy'], system_changes)
-            #self.run_calculation(atoms, ['phonons'], system_changes)
+            self.command=self.build_command(properties+['energy'],self.parameters)
+            self.run_calculation(atoms, properties+['energy'], system_changes)
+        else :
             raise NotImplementedError
 
 
     def write_input(self, atoms=None, properties=None, system_changes=None):
-        """Write input file(s).
-            
+        """
+        Write input file(s). This is called by FileIOCalculator just before 
+        it executes the external command.
         """
         self.set(prefix=self.prefix)
         self.atoms2params()
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
-        write_pw_in(self.directory, atoms, self.parameters)
+        
+        if {'energy','stress'} & set(properties) :
+            write_pw_in(self.directory, atoms, self.parameters)
+        if 'phonons' in properties :
+            write_ph_in(self.directory, atoms, self.parameters)
+            write_q2r_in(self.directory, atoms, self.parameters)
+            write_matdyn_in(self.directory, atoms, self.parameters)
+            write_phdos_in(self.directory, atoms, self.parameters)
+
 
 
     def read_results(self):
@@ -137,6 +185,13 @@ class QuantumEspresso(FileIOCalculator):
             # Job not ready.
             raise CalcNotReadyError
         
+    def clean(self):
+        '''
+        Celaning procedure. Non-functional for now.
+        We need to decide which files should be left intact.
+        '''
+        pass
+        
     def atoms2params(self):
         '''
             Populate parameters dictionary with data extracted from atoms.
@@ -149,8 +204,6 @@ class QuantumEspresso(FileIOCalculator):
 
 class RemoteQE(QuantumEspresso):
     
-    pw_cmd='mpiexec -n %(procs)d pw.x < %(infile)s > %(outfile)s'
-
     # Queue system submit command
     qsub_cmd='cd %(rdir)s ; qsub -N %(title)s -l procs=%(procs)d ./run-pw.pbs'
 
@@ -190,18 +243,17 @@ class RemoteQE(QuantumEspresso):
         self.jobid=None
         self.block=block
 
-    def write_pbs_in(self):
+    def write_pbs_in(self,properties):
         fh=open(os.path.join(self.directory,'run-pw.pbs'),'w')
 
         fh.write(self.pbs_template % {
-            'command': QuantumEspresso.build_command(self,prop='scf',
-                            infile='pw.in', outfile='pw.out',
-                            params=self.parameters)
+            'command': QuantumEspresso.build_command(self,prop=properties,
+                                                        params=self.parameters)
             })        
         
         fh.close()
 
-    def build_command(self,prop='scf',**kwargs):
+    def build_command(self,prop=['energy'],**kwargs):
         cmd=self.qsub_cmd % {
             'title': self.label,
             'procs': self.parameters['procs'],
@@ -214,10 +266,10 @@ class RemoteQE(QuantumEspresso):
          }
         return cmd
 
-    def write_input(self, atoms=None, properties=None, system_changes=None):
+    def write_input(self, atoms=None, properties=['energy'], system_changes=all_changes):
         '''Write input file(s).'''
         QuantumEspresso.write_input(self, atoms, properties, system_changes)
-        self.write_pbs_in()
+        self.write_pbs_in(properties)
         subprocess.call(self.copy_out_cmd % {
                             'ldir': self.directory,
                             'rdir': self.parameters['rdir'],

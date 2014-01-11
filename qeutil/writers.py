@@ -32,19 +32,6 @@ K_POINTS automatic
    %(kx)d %(ky)d %(kz)d   %(shift)d %(shift)d %(shift)d
 '''
 
-# PH input file
-ph_in='''
-%(calc)s
-&INPUTPH
-    prefix = '%(prefix)s',
-    outdir = './%(outdir)s/',
-    ldisp = .true.,
-    fildrho = 'fildrho',
-    fildvscf = 'fildvscf',
-    nq1 = %(nq)d , nq2 = %(nq)d , nq3 = %(nq)d
- /
-'''
-
 q2r_in='''
 &INPUT
     fildyn='matdyn',
@@ -207,7 +194,7 @@ def write_pw_in(d,a,p):
     fh.write(' &CONTROL\n')
     fh.write("    calculation = '%s',\n" % p['calc'])
 
-    pwin_k=['tstress','nstep','pseudo_dir','outdir','wfcdir']
+    pwin_k=['tstress','nstep','pseudo_dir','outdir','wfcdir', 'prefix']
     write_section_params(fh, pwin_k, p)
     fh.write(' /\n')
     
@@ -282,6 +269,39 @@ def write_pw_in(d,a,p):
             fh.write('   %.14f %.14f %.14f %.14f\n' % tuple(v))
             
     fh.close()
+    
+
+# PH input file
+ph_in='''
+%(calc)s
+&INPUTPH
+    prefix = '%(prefix)s',
+    outdir = './%(outdir)s/',
+    ldisp = .true.,
+    fildrho = 'fildrho',
+    fildvscf = 'fildvscf',
+    nq1 = %(nq1)d , nq2 = %(nq2)d , nq3 = %(nq3)d
+ /
+'''
+
+
+
+def write_ph_in(d,a,p):
+    p=p.copy()
+    qpts=p['qpts']
+    p.update({'nq1':qpts[0],'nq2':qpts[1],'nq3':qpts[2]})
+    fh=open(os.path.join(d,'ph.in'),'w')
+    fh.write( ph_in % p )
+    fh.close()
+    
+def write_q2r_in(d,a,p):
+    pass
+
+def write_matdyn_in(d,a,p):
+    pass
+
+def write_phdos_in(d,a,p):
+    pass
     
 
 def make_calc_dir(prefix, bdir='./'):
