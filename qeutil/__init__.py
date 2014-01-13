@@ -93,12 +93,15 @@ class QuantumEspresso(FileIOCalculator):
     }
     'Default parameters'
 
-    def __init__(self, label=None, atoms=None, wdir='./', **kwargs):
+    def __init__(self, label=None, atoms=None, wdir='./', restart=None, **kwargs):
         FileIOCalculator.__init__(self,label=label,atoms=atoms,command=None,**kwargs)
         self.label=label
         self.prefix=label
         self.wdir=wdir
-        self.directory=make_calc_dir(self.prefix,wdir)
+        if restart :
+            self.directory=restart
+        else :
+            self.directory=make_calc_dir(self.prefix,wdir)
         self.submited=False
 
     def copy(self):
@@ -113,36 +116,47 @@ class QuantumEspresso(FileIOCalculator):
         if {'energy','stress'} & set(prop):
             cmd+= self.pw_cmd % params
             cmd+='\n'
-        if 'phonons' in prop :
+        if 'd2' in prop :
             cmd+= self.ph_cmd % params
-            cmd+='\n#'
+            cmd+='\n'
             cmd+= self.q2r_cmd % params
-            cmd+='\n#'
+            cmd+='\n'
+        if 'frequencies' in prop :
             cmd+= self.matdyn_cmd % params
-            cmd+='\n#'
+            cmd+='\n'
+        if 'phdos' in prop :
             cmd+= self.phdos_cmd % params
             cmd+='\n'
         return cmd
             
 
     def run_calculation(self, atoms, properties, system_changes):
+        #print self.command
         FileIOCalculator.calculate(self, atoms, properties, system_changes)
 
     def calculate(self, atoms=None, properties=['energy'],
                   system_changes=all_changes):
 
-        if {'energy','stress'} & set(properties) :
-            print 'Energy'
             self.command=self.build_command(properties,self.parameters)
-            prop=list({'energy','stress'} & set(properties))
-            self.run_calculation(atoms, prop, system_changes)
-        elif 'bands' in properties :
-            raise NotImplementedError
-        elif 'phonons' in properties :
-            self.command=self.build_command(properties+['energy'],self.parameters)
-            self.run_calculation(atoms, properties+['energy'], system_changes)
-        else :
-            raise NotImplementedError
+            self.run_calculation(atoms, properties, system_changes)
+        
+#        if {'energy','stress'} & set(properties) :
+#            self.command=self.build_command(properties,self.parameters)
+#            prop=list({'energy','stress'} & set(properties))
+#            self.run_calculation(atoms, prop, system_changes)
+#        elif 'bands' in properties :
+#            raise NotImplementedError
+#        elif 'd2' in properties :
+#            self.command=self.build_command(['d2'],self.parameters)
+#            self.run_calculation(atoms, ['d2'], system_changes)
+#        elif 'frequencies' in properties :
+#            self.command=self.build_command(['frequencies'],self.parameters)
+#            self.run_calculation(atoms, ['frequencies'], system_changes)
+#        elif 'phdos' in properties :
+#            self.command=self.build_command(['phdos'],self.parameters)
+#            self.run_calculation(atoms, ['phdos'], system_changes)
+#        else :
+#            raise NotImplementedError
 
 
     def write_input(self, atoms=None, properties=None, system_changes=None):
@@ -156,10 +170,12 @@ class QuantumEspresso(FileIOCalculator):
         
         if {'energy','stress'} & set(properties) :
             write_pw_in(self.directory, atoms, self.parameters)
-        if 'phonons' in properties :
+        if 'd2' in properties :
             write_ph_in(self.directory, atoms, self.parameters)
             write_q2r_in(self.directory, atoms, self.parameters)
+        if 'frequencies' in properties :
             write_matdyn_in(self.directory, atoms, self.parameters)
+        if 'phdos' in properties:
             write_phdos_in(self.directory, atoms, self.parameters)
 
 
@@ -168,16 +184,30 @@ class QuantumEspresso(FileIOCalculator):
         """Read energy, forces, ... from output file(s)."""
         
         fn=os.path.join(self.directory,'pw.out')
+        xml_fn=os.path.join(self.directory,self.parameters['outdir'],self.prefix+'.save','data-file.xml')
         # Read the pan-ultimate line of the output file
         try: 
             ln=open(fn).readlines()[-2]
             if ln.find('JOB DONE.')>-1 :
                 # Job is done we can read the output
                 r=read_quantumespresso_textoutput(fn)
+                self.results.update(r)
+                self.results_xml={}
+                self.results_xml.update(read_quantumespresso_xmloutput(xml_fn,'all'))
                 self.results['energy']=r['etotal']
                 s=-array(r['stress'])* 1e-1 * ase.units.GPa
                 self.results['stress']=array([s[0, 0], s[1, 1], s[2, 2],
                                        s[1, 2], s[0, 2], s[0, 1]])
+                try :
+                    self.results['phdos']=np.loadtxt(os.path.join(self.directory,self.prefix+'.dos')).T
+                except IOError:
+                    # No frequency data. We assume there is none and silently
+                    pass
+                try :
+                    self.results['frequencies']=np.loadtxt(os.path.join(self.directory,self.prefix+'.freq.gp')).T
+                except IOError:
+                    # No frequency data. We assume there is none and silently
+                    pass
             else :
                 # Job not ready.
                 raise CalcNotReadyError
@@ -253,7 +283,7 @@ class RemoteQE(QuantumEspresso):
         
         fh.close()
 
-    def build_command(self,prop=['energy'],**kwargs):
+    def build_command(self,prop=['energy'],params={}):
         cmd=self.qsub_cmd % {
             'title': self.label,
             'procs': self.parameters['procs'],

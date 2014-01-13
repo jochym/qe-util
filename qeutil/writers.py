@@ -1,4 +1,6 @@
 
+from __future__ import division
+
 import os
 from tempfile import mkdtemp
 from pyspglib import spglib
@@ -32,35 +34,6 @@ K_POINTS automatic
    %(kx)d %(ky)d %(kz)d   %(shift)d %(shift)d %(shift)d
 '''
 
-q2r_in='''
-&INPUT
-    fildyn='matdyn',
-    zasr='%(asr)s',
-    flfrc='%(prefix)s.fc'
-/
-'''
-
-matdyn_in='''
-&input
-    asr='%(asr)s',  
-    flfrc='%(prefix)s.fc', 
-    flfrq='%(prefix)s.freq',
-    q_in_band_form=.true.
-/
-'''
-
-phdos_in='''
-&input
-    dos=.true.
-    asr='%(asr)s',  
-    flfrc='%(prefix)s.fc', 
-    fldos='%(prefix)s.dos',
-    nk1=%(doskx)d,
-    nk2=%(dosky)d,
-    nk3=%(doskz)d,
-    ndos=%(ndos)d
- /
-'''
 
 
 
@@ -149,11 +122,17 @@ def write_cell_params(fh, a, p):
     cell=puc[0]
     apos=puc[1]
     anum=puc[2]
+    icell=a.get_cell()
+    A=norm(icell[0])
+    B=norm(icell[1])
+    C=norm(icell[2])
 
     # Select appropriate ibrav
     if sgn >= 195 :
         # Cubic lattice
-        if   ltyp=='P':  p['ibrav']=1  # Primitive
+        if   ltyp=='P':  
+            p['ibrav']=1  # Primitive
+            qepc=array([[1,0,0],[0,1,0],[0,0,1]])
         elif ltyp=='F':  
             p['ibrav']=2  # FCC
             qepc=array([[-1,0,1],[0,1,1],[-1,1,0]])/2.0
@@ -163,16 +142,23 @@ def write_cell_params(fh, a, p):
         else :
             print 'Impossible lattice symmetry! Contact the author!'
             raise NotImplementedError
-        a=sqrt(2)*norm(cell[0])
-        qepc=a*qepc
-        fh.write('      A = %f,\n' % (a,))
+        #a=sqrt(2)*norm(cell[0])
+        qepc=A*qepc
+        fh.write('      A = %f,\n' % (A,))
     elif sgn >= 143 :
         # Hexagonal and trigonal 
-        if   ltyp=='P' :  p['ibrav']=4  # Primitive
-        elif ltyp=='R' :  p['ibrav']=5  # Trigonal rhombohedral
+        if   ltyp=='P' :  
+            p['ibrav']=4  # Primitive
+            qepc=array([[1,0,0],[-1/2,sqrt(3)/2,0],[0,0,C/A]])
+        elif ltyp=='R' :  
+            p['ibrav']=5  # Trigonal rhombohedral
+            raise NotImplementedError
         else :
             print 'Impossible lattice symmetry! Contact the author!'
             raise NotImplementedError
+        qeps=A*qepc
+        fh.write('      A = %f,\n' % (A,))
+        fh.write('      C = %f,\n' % (C,))
     elif sgn >= 75 :
         raise NotImplementedError
     else :
@@ -284,8 +270,6 @@ ph_in='''
  /
 '''
 
-
-
 def write_ph_in(d,a,p):
     p=p.copy()
     qpts=p['qpts']
@@ -293,16 +277,76 @@ def write_ph_in(d,a,p):
     fh=open(os.path.join(d,'ph.in'),'w')
     fh.write( ph_in % p )
     fh.close()
-    
+
+q2r_in='''
+&INPUT
+    fildyn='matdyn',
+    zasr='%(asr)s',
+    flfrc='%(prefix)s.fc'
+/
+'''
+
 def write_q2r_in(d,a,p):
-    pass
+    p=p.copy()
+    qpts=p['qpts']
+    p.update({'nq1':qpts[0],'nq2':qpts[1],'nq3':qpts[2]})
+    fh=open(os.path.join(d,'q2r.in'),'w')
+    fh.write( q2r_in % p )
+    fh.close()
+
+matdyn_in='''
+&input
+    asr='%(asr)s',  
+    flfrc='%(prefix)s.fc', 
+    flfrq='%(prefix)s.freq',
+    q_in_band_form=.true.
+/
+'''
 
 def write_matdyn_in(d,a,p):
-    pass
+    p=p.copy()
+    qpts=p['qpts']
+    p.update({'nq1':qpts[0],'nq2':qpts[1],'nq3':qpts[2]})
+    fh=open(os.path.join(d,'matdyn.in'),'w')
+    fh.write( matdyn_in % p )
+    fh.write( ' %d\n' % (len(p['qpath'])))
+    qp=p['qpath']
+    t=[]
+    dt=[]
+    s=0
+    for x in [0]+map(norm,qp[1:]-qp[:-1]):
+        s+=x
+        t.append(s)
+        dt.append(x)
+    s=sum(dt)
+    step=s/p['points']
+    for dist,q in zip(dt,p['qpath']):
+        #print tuple(list(q)+[p['points']])
+        fh.write(' %f %f %f   %d\n' % tuple(list(q)+[round(dist/step)]))
+    fh.close()
+
+phdos_in='''
+&input
+    dos=.true.
+    asr='%(asr)s',  
+    flfrc='%(prefix)s.fc', 
+    fldos='%(prefix)s.dos',
+    nk1=%(nk1)d,
+    nk2=%(nk2)d,
+    nk3=%(nk3)d,
+    ndos=%(ndos)d
+ /
+'''
 
 def write_phdos_in(d,a,p):
-    pass
-    
+    p=p.copy()
+    qpts=p['qpts']
+    nkdos=p['nkdos']
+    p.update({'nq1':qpts[0],'nq2':qpts[1],'nq3':qpts[2]})
+    p.update({'nk1':nkdos[0],'nk2':nkdos[1],'nk3':nkdos[2]})
+    fh=open(os.path.join(d,'phdos.in'),'w')
+    fh.write( phdos_in % p )
+    fh.close()
 
 def make_calc_dir(prefix, bdir='./'):
     '''

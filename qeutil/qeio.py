@@ -1082,10 +1082,10 @@ def read_quantumespresso_xmloutput(filename, action, mydict=None):
     actions['dim'] = ['dim', 'bz']
     actions['pseudo'] = ['ions']
     actions['config'] = ['cell', 'ions']
-    actions['rho'] = None
+    actions['rho'] = ['rho']
     actions['wave'] = ['pw', 'wfc']
     actions['nowave'] = ['cell', 'pw','ions', 'spin', 'init_mag', 'xc', 'occ', 'bz', 'bs', 'symm', 'efield', 'occupations']
-    actions['all'] = actions['nowave'].append('rho')
+    actions['all'] = actions['nowave'] + actions['rho']
     actions['ef'] = ['ef']
     actions['kpts'] = ['kpts']
 
@@ -1094,6 +1094,7 @@ def read_quantumespresso_xmloutput(filename, action, mydict=None):
     elif action == 'all':
         mydict.clear()
     
+   
     if action in actions.keys():
         
         root = xml_openroot(filename)
@@ -1101,7 +1102,6 @@ def read_quantumespresso_xmloutput(filename, action, mydict=None):
         get_dimensions_xml(root, mydict)
         get_qexml_version(root,mydict)
         for A in actions[action]:
-            print A
             if call[A]!=None :
                 call[A](root, mydict)
 
