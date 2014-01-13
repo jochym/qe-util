@@ -320,7 +320,7 @@ def write_matdyn_in(d,a,p):
         dt.append(x)
     s=sum(dt)
     step=s/p['points']
-    for dist,q in zip(dt,p['qpath']):
+    for dist,q in zip(dt[1:]+[0],p['qpath']):
         #print tuple(list(q)+[p['points']])
         fh.write(' %f %f %f   %d\n' % tuple(list(q)+[round(dist/step)]))
     fh.close()

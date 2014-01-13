@@ -235,7 +235,10 @@ class QuantumEspresso(FileIOCalculator):
 class RemoteQE(QuantumEspresso):
     
     # Queue system submit command
-    qsub_cmd='cd %(rdir)s ; qsub -N %(title)s -l procs=%(procs)d ./run-pw.pbs'
+    qsub_tool='qsub'
+    qstat_tool='qstat'
+    
+    qsub_cmd='cd %(rdir)s ; %(qsub_tool)s -N %(title)s -l procs=%(procs)d ./run-pw.pbs'
 
     # Remote execution command
     remote_exec_cmd='ssh %(user)s@%(host)s "%(command)s"'
@@ -252,10 +255,10 @@ class RemoteQE(QuantumEspresso):
     pbs_template=''
 
     # Command to check the state of the job
-    pbs_check_cmd='''qstat -f %(jobid)s |grep job_state |awk '{print $3}' '''
+    pbs_check_cmd='''%(qstat_tool)s -f %(jobid)s |grep job_state |awk '{print $3}' '''
     
     # Access data
-    host='localhost'
+    host=''
     user=''
     
     # Location:
@@ -285,6 +288,8 @@ class RemoteQE(QuantumEspresso):
 
     def build_command(self,prop=['energy'],params={}):
         cmd=self.qsub_cmd % {
+            'qsub_tool': self.qsub_tool,
+            'qstat_tool': self.qstat_tool,
             'title': self.label,
             'procs': self.parameters['procs'],
             'rdir': os.path.join(self.parameters['rdir'],os.path.split(self.directory)[-1])
@@ -310,7 +315,11 @@ class RemoteQE(QuantumEspresso):
     def job_ready(self):
         try :
             cmd=self.remote_exec_cmd % {
-                'command': self.pbs_check_cmd % {'jobid':self.jobid},
+                'command': self.pbs_check_cmd % {
+                                    'qsub_tool': self.qsub_tool,
+                                    'qstat_tool': self.qstat_tool,
+                                    'jobid':self.jobid
+                                    },
                 'user': self.parameters['user'],
                 'host': self.parameters['host']
                 }
