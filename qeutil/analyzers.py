@@ -4,9 +4,17 @@
 from __future__ import division
 from numpy import array
 import numpy
+from scipy.constants import Boltzmann, eV, Avogadro
 from numpy.linalg import norm
 from pylab import *
 
+from scipy.integrate import simps
+from numpy import sinh, tanh, log
+
+
+THz2meV=1/0.241799
+cminv2meV=1/8.0655
+k_B=Boltzmann/eV
 
 def get_EOS(d, comment=""):
     # Fitting functions
@@ -104,3 +112,48 @@ def plot_phonons(freq=None, dos=None,
         
     subplots_adjust(wspace=0)
     return [ax1,ax2]
+    
+def get_thermodynamic_functions(dos,Tmin=None,Tmax=1500,Tstep=10):
+        # If Tmin=None get the step size
+        if Tmin==None :
+            Tmin=Tstep
+        # get the ndf from the normalization of dos
+        ndf=round(simps(dos[1],dos[0]))
+        
+        # frequencies/energies
+        # QE outputs dos in cm^-1, let's convert to sane units 
+        # Let's convert to energy (eV) to include the hbar
+        nu=1e-3*cminv2meV*dos[0]
+        dos=dos[1]
+        
+        # We need to cut the nu to positive range
+        no=array([[o,g] for o,g in zip(nu,dos) if o>0 ])
+        nu=no[:,0]
+        dos=no[:,1]
+    
+        # correct the normalization for units, negative cut and numerical errors
+        dos=dos/simps(dos,nu)
+    
+        # Zero-point energy - $\hbar\omega/2$ for each degree of freedom integrated over $\omega$
+        F0=ndf*simps(0.5*dos*nu,nu)
+    
+        # Put in special case for the T=0. Just ZPV energy.
+        # T, Free energy, Cv, Cp, S
+        tfun=[[0,F0,0]]
+        
+        for T in arange(Tmin,Tmax,Tstep):
+            # Maradudin book formula - the only one important for thermal expansion
+            # The result is in eV, temperature in K
+            e=0.5*nu/(k_B*T)
+            Fph=ndf*T*k_B*simps(dos*log(2*sinh(e)),nu)
+            Cv=eV*Avogadro*ndf*k_B*simps(e*e*dos/sinh(e)**2,nu)
+            #S=k_B*(simps(2*dos*e/(exp(2*e)-1),nu)-simps(dos*(1-exp(-2*e)),nu))
+            # Alternative formula from QE
+            #Sqe=k_B*simps(dos*(e/tanh(e)-log(2*sinh(e))),nu)
+            # Formulas lifted from the QHA code in QE - not correct with current units
+            #q=0.5*a3*nu/T
+            #E_int=simps(a1*dos*nu/tanh(q),nu)
+            #S0=simps(dos*(q/tanh(q)-log(2*sinh(q))),nu)
+            tfun.append([T, Fph, Cv])
+            #print " %5.2f  %12f  %12f  %12f" % (T, Cv, S, Sqe)
+        return array(tfun).T
