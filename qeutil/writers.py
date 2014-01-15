@@ -10,29 +10,32 @@ from math import sqrt
 from ase import Atoms
 
 # PWscf input file
-pw_in='''
-&CONTROL
-  calculation = '%(calc)s',
-    prefix = '%(prefix)s',
-    tstress = .true.,
-  pseudo_dir = '../pspot',
-  outdir = './%(outdir)s/',
-/
-&SYSTEM
-    ecutwfc = %(ecut)f,
-    ibrav = %(ibrav)d,
-    nat = %(nat)d,
-    ntyp = %(ntyp)d,
-/
-&ELECTRONS
-/
-ATOMIC_SPECIES
-    %(at_species)s
-ATOMIC_POSITIONS
-    %(at_positions)s
-K_POINTS automatic
-   %(kx)d %(ky)d %(kz)d   %(shift)d %(shift)d %(shift)d
-'''
+# not used - just a comment
+#pw_in='''
+#&CONTROL
+#  calculation = '%(calc)s',
+#    prefix = '%(prefix)s',
+#    tstress = .true.,
+#    tprnfor = .true.,
+#    verbosity = 'high',
+#  pseudo_dir = '../pspot',
+#  outdir = './%(outdir)s/',
+#/
+#&SYSTEM
+#    ecutwfc = %(ecut)f,
+#    ibrav = %(ibrav)d,
+#    nat = %(nat)d,
+#    ntyp = %(ntyp)d,
+#/
+#&ELECTRONS
+#/
+#ATOMIC_SPECIES
+#    %(at_species)s
+#ATOMIC_POSITIONS
+#    %(at_positions)s
+#K_POINTS automatic
+#   %(kx)d %(ky)d %(kz)d   %(shift)d %(shift)d %(shift)d
+#'''
 
 
 
@@ -156,11 +159,15 @@ def write_cell_params(fh, a, p):
         else :
             print 'Impossible lattice symmetry! Contact the author!'
             raise NotImplementedError
-        qeps=A*qepc
+        qepc=A*qepc
         fh.write('      A = %f,\n' % (A,))
         fh.write('      C = %f,\n' % (C,))
     elif sgn >= 75 :
         raise NotImplementedError
+    elif sgn ==1 :
+        # P1 symmetry - no special primitive cell signal to the caller
+        p['ibrav']=0
+        return None
     else :
         raise NotImplementedError
     cp=Atoms(cell=puc[0], scaled_positions=puc[1], numbers=puc[2], pbc=True)
@@ -180,7 +187,8 @@ def write_pw_in(d,a,p):
     fh.write(' &CONTROL\n')
     fh.write("    calculation = '%s',\n" % p['calc'])
 
-    pwin_k=['tstress','nstep','pseudo_dir','outdir','wfcdir', 'prefix']
+    pwin_k=['tstress', 'tprnfor','nstep','pseudo_dir','outdir',
+            'wfcdir', 'prefix','forc_conv_thr', 'etot_conv_thr']
     write_section_params(fh, pwin_k, p)
     fh.write(' /\n')
     
@@ -193,7 +201,12 @@ def write_pw_in(d,a,p):
         # Need to use symmetry properly
         # create a dummy atoms object for primitive cell
         primcell=write_cell_params(fh,a,p)
-        cr=Atoms(cell=primcell[0],scaled_positions=primcell[1],numbers=primcell[2],pbc=True)
+        if primcell :
+            # primitive cell has been found - let us use it
+            cr=Atoms(cell=primcell[0],scaled_positions=primcell[1],numbers=primcell[2],pbc=True)
+        else :
+            # no primitive cell found - drop the symmetry
+            cr=a
     else :
         cr=a
         p['ibrav']=0
@@ -210,7 +223,30 @@ def write_pw_in(d,a,p):
     fh.write(' &ELECTRONS\n')
     fh.write(' /\n')
 
+    # ----------------------------------------------------------
+    # | IONS section
+    # ----------------------------------------------------------
+
+    if p['calc'] in ['vc-relax', 'vc-md', 'md', 'relax']:
+        fh.write(' &IONS\n')
+        pwin_k=['ion_dynamics','ion_positions', 'phase_space', 'pot_extrapolation']
+        write_section_params(fh, pwin_k, p)
+        
+        fh.write(' /\n')
+
+
+    # ----------------------------------------------------------
+    # | CELL section
+    # ----------------------------------------------------------
+
+    if p['calc'] in ['vc-relax', 'vc-md']:
+        fh.write('&CELL\n')
+        pwin_k=['cell_dynamics','press', 'cell_dofree']
+        write_section_params(fh, pwin_k, p)
     
+        fh.write('/\n')
+
+
     # ----------------------------------------------------------
     # Card: ATOMIC_SPECIES
     # ----------------------------------------------------------
@@ -236,7 +272,7 @@ def write_pw_in(d,a,p):
     # Card: CELL_PARAMETERS
     # ----------------------------------------------------------
     # Write out only if ibrav==0 - no symmetry used
-    if not p['use_symmetry']:
+    if not p['use_symmetry'] or p['ibrav']==0:
         fh.write('CELL_PARAMETERS angstrom\n')
         
         for v in cr.get_cell():

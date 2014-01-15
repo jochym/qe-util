@@ -82,6 +82,7 @@ class QuantumEspresso(FileIOCalculator):
                 'ndos': 200,
                 'points': 100,
                 'tstress': True,
+                'tprnfor': True,
                 'ecutwfc': 50,
                 'ibrav': 0,
                 'pp_type': 'nc',
@@ -113,7 +114,7 @@ class QuantumEspresso(FileIOCalculator):
         params=params.copy()
         params.update({'prop': prop})
         cmd=''
-        if {'energy','stress'} & set(prop):
+        if {'energy','stress','forces'} & set(prop):
             cmd+= self.pw_cmd % params
             cmd+='\n'
         if 'd2' in prop :
@@ -168,7 +169,7 @@ class QuantumEspresso(FileIOCalculator):
         self.atoms2params()
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
         
-        if {'energy','stress'} & set(properties) :
+        if {'energy','stress','forces'} & set(properties) :
             write_pw_in(self.directory, atoms, self.parameters)
         if 'd2' in properties :
             write_ph_in(self.directory, atoms, self.parameters)
@@ -198,11 +199,23 @@ class QuantumEspresso(FileIOCalculator):
                 s=-array(r['stress'])* 1e-1 * ase.units.GPa
                 self.results['stress']=array([s[0, 0], s[1, 1], s[2, 2],
                                        s[1, 2], s[0, 2], s[0, 1]])
+                rk=self.results.keys()
+                if 'cell' in rk :
+                    try :
+                        self.results['cell']=array(self.results['cell'])*self.results['alat']*Bohr
+                    except TypeError:
+                        # cell data not in order just clear the mess
+                        del(self.results['cell'])
+                if 'atoms_forces' in rk :
+                    # Translate from the Ry/au of QE to the eV/A units of ASE
+                    self.results['forces']=array(self.results['atoms_forces'])/(ase.units.Rydberg/ase.units.Bohr)
+
                 try :
                     self.results['phdos']=np.loadtxt(os.path.join(self.directory,self.prefix+'.dos')).T
                 except IOError:
                     # No frequency data. We assume there is none and silently
                     pass
+
                 try :
                     self.results['frequencies']=np.loadtxt(os.path.join(self.directory,self.prefix+'.freq.gp')).T
                 except IOError:

@@ -235,17 +235,18 @@ def read_quantumespresso_textoutput(filename, verbose=False):
                 CAUGHT_WHAT = 'old cell'
                 CAUGHT_LINES = []                           
                 
-            if l.rfind('final estimate of lattice vectors') > -1:
+            if l.rfind('cell_parameters') > -1:
                 CAUGHT = 3
                 CAUGHT_DISCARD = 0
                 CAUGHT_WHAT = 'new cell'
                 CAUGHT_LINES = []
 
-            if l.rfind('begin final coordinates') > -1:
-                CAUGHT = 3
-                CAUGHT_DISCARD = 3
-                CAUGHT_WHAT = 'new cell'
-                CAUGHT_LINES = []
+# This section is faulty. The other two catch the results just fine.
+#            if l.rfind('begin final coordinates') > -1:
+#                CAUGHT = 3
+#                CAUGHT_DISCARD = 3
+#                CAUGHT_WHAT = 'new cell'
+#                CAUGHT_LINES = []
 
             if l.rfind('atomic_positions') > -1:
                 CAUGHT= Results['nat']
