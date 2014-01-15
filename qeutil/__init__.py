@@ -195,7 +195,7 @@ class QuantumEspresso(FileIOCalculator):
                 self.results.update(r)
                 self.results_xml={}
                 self.results_xml.update(read_quantumespresso_xmloutput(xml_fn,'all'))
-                self.results['energy']=r['etotal']
+                self.results['energy']=r['etotal']*Rydberg
                 s=-array(r['stress'])* 1e-1 * ase.units.GPa
                 self.results['stress']=array([s[0, 0], s[1, 1], s[2, 2],
                                        s[1, 2], s[0, 2], s[0, 1]])
@@ -408,7 +408,7 @@ class RemoteQE(QuantumEspresso):
             if ln.find('JOB DONE.')>-1 :
                 # Job is done we can read the output
                 r=read_quantumespresso_textoutput(fn)
-                self.results['energy']=r['etotal']
+                self.results['energy']=r['etotal']/Rydberg
                 s=array(r['stress'])* 1e-1 * ase.units.GPa
                 self.results['stress']=array([s[0, 0], s[1, 1], s[2, 2],
                                        s[1, 2], s[0, 2], s[0, 1]])
