@@ -177,6 +177,11 @@ def read_quantumespresso_textoutput(filename, verbose=False):
                 pos = t.index('is')
                 Results['fermi_energy'] = float(t[pos+1])
 
+            if l.rfind('highest occupied') > -1 :
+                t = l.split()
+                Results['HOL'] = float(t[-2])
+                Results['LUL'] = float(t[-1])
+
             if l.rfind('magnetization') > -1:
                 t = l.split()
                 pos = t.index('magnetization')
@@ -948,8 +953,8 @@ def get_occupations_xml(tree, mydict):
         mydict['ntetra'] = int(element.find("NUMBER_OF_TETRAHEDRA").text.strip())
         ntetra = mydict['ntetra']
         mydict['tetrahedra'] = []
-        for i in range (ntetra):
-             mydict['tetrahedra'].append([float(x) for x in element.find("TETRAHEDRON"+str(i+1)).text.split()])
+        for i in range(ntetra):
+            mydict['tetrahedra'].append([float(x) for x in element.find("TETRAHEDRON."+str(i+1)).text.split()])
     else:
         mydict['ntetra'] = 0
 
