@@ -114,7 +114,7 @@ class QuantumEspresso(FileIOCalculator):
         params=params.copy()
         params.update({'prop': prop})
         cmd=''
-        if {'energy','stress','forces'} & set(prop):
+        if set(['energy','stress','forces']) & set(prop):
             cmd+= self.pw_cmd % params
             cmd+='\n'
         if 'd2' in prop :
@@ -169,7 +169,7 @@ class QuantumEspresso(FileIOCalculator):
         self.atoms2params()
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
         
-        if {'energy','stress','forces'} & set(properties) :
+        if set(['energy','stress','forces']) & set(properties) :
             write_pw_in(self.directory, atoms, self.parameters)
         if 'd2' in properties :
             write_ph_in(self.directory, atoms, self.parameters)
