@@ -71,7 +71,7 @@ def get_EOS(d, comment=""):
 
 def plot_phonons(freq=None, dos=None, 
                     qpath=array([]), qpname=[], 
-                    exper=None, ax=None, label=None, **kwargs):
+                    exper=None, ax=None, label=None, positive_only=True, **kwargs):
 
 #idx, ex=True, bdir='/home/jochym/Desktop/Fizyka/', qp=array([G1,X,G2,L]), lbl=None, ax=None, castep=False):
     s=0
@@ -99,17 +99,22 @@ def plot_phonons(freq=None, dos=None,
     
     for i in range(freq.shape[0]-1):
         if clr :
-            ax2.plot(freq[0,1:], freq[i+1,1:],'.',color=clr)
+            ax2.plot(freq[0], freq[i+1],'-',color=clr)
         else :
-            clr=ax2.plot(freq[0,1:], freq[i+1,1:],'.',label=label)[0].get_color()
+            clr=ax2.plot(freq[0], freq[i+1],'-',label=label)[0].get_color()
         
         
     if exper :
         clr=ax2.plot(exper[0],exper[1],'o',label='Experiment')[0].get_color();
 
     
-    xlim(0,max(freq[0,1:]))
-    ylim(0,ylim()[1])
+    xlim(0,max(freq[0]))
+    
+    if positive_only :
+        ylim(0,ylim()[1])
+    else :
+        ylim(ylim()[0],ylim()[1])
+
     if qpname :
         #print t, qpname, min(freq[0]), max(freq[0])
         xticks(t,qpname)
@@ -118,6 +123,36 @@ def plot_phonons(freq=None, dos=None,
     subplots_adjust(wspace=0)
     return [ax1,ax2]
     
+
+def plot_bands(result=None, show_gap=True,
+                    qpath=array([]), qpname=[], 
+                    ax=None, label=None, **kwargs):
+    
+    assert(result)
+    kpoints=result['bands_kpt']
+    energies=result['bands']
+    edos=result['edos']
+    pk=kpoints[0]
+    kpth=[0]
+    for k in kpoints:
+        kpth.append(norm(k-pk)+kpth[-1])
+        pk=k
+    kpth=array(kpth[1:])
+
+    ax1,ax2=plot_phonons(insert(energies,0,kpth,axis=0),edos,
+                qpath=qpath,qpname=qpname,ax=ax,label=label,positive_only=False, **kwargs)
+    
+    if show_gap and 'HOL' in result.keys() and 'LUL' in result.keys():
+        hol=result['HOL']
+        lul=result['LUL']
+        sca(ax2)
+        axhspan(hol,lul,alpha=0.15, color='k')
+        sca(ax1)
+        axhspan(hol,lul,alpha=0.15, color='k')
+
+    return [ax1,ax2]
+
+
 def get_thermodynamic_functions(dos,Tmin=None,Tmax=1500,Tstep=10):
     '''
     Calculate free energy contribution from phonons 

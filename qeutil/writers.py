@@ -179,7 +179,13 @@ def write_cell_params(fh, a, p):
 
 def write_pw_in(d,a,p):
 
-    fh=open(os.path.join(d,'pw.in'),'w')
+    if 'iofile' in p.keys() :
+        # write special varians of the pw input
+        fh=open(os.path.join(d,p['iofile']+'.in'),'w')
+    else :
+        # write standard pw input
+        fh=open(os.path.join(d,'pw.in'),'w')
+
     # ----------------------------------------------------------
     # CONTROL section
     # ----------------------------------------------------------
@@ -210,9 +216,9 @@ def write_pw_in(d,a,p):
     else :
         cr=a
         p['ibrav']=0
-    fh.write("    nat = %d\n" % (cr.get_number_of_atoms()))
-    fh.write("    ntyp = %d\n" % (len(set(cr.get_atomic_numbers()))))
-    pwin_k=['ecutwfc','ibrav']
+    fh.write("    nat = %d,\n" % (cr.get_number_of_atoms()))
+    fh.write("    ntyp = %d,\n" % (len(set(cr.get_atomic_numbers()))))
+    pwin_k=['ecutwfc','ibrav','nbnd','occupations']
     write_section_params(fh, pwin_k, p)
     fh.write(' /\n')
 
@@ -282,31 +288,67 @@ def write_pw_in(d,a,p):
     # Card: K_POINTS
     # ----------------------------------------------------------
 
-    fh.write('K_POINTS %s\n' % p['kpt_type'])
+    if p['kpt_type'] in ['automatic','edos'] :
+        fh.write('K_POINTS %s\n' % 'automatic')
+    else :
+        fh.write('K_POINTS %s\n' % p['kpt_type'])
+        
     if p['kpt_type'] is 'automatic':
         fh.write('   %d %d %d   %d %d %d\n' % (tuple(p['kpts'])+tuple(p['kpt_shift'])))
+    elif p['kpt_type'] is 'edos':
+        fh.write('   %d %d %d   %d %d %d\n' % (tuple(p['nkdos'])+tuple([0,0,0])))
     elif not p['kpt_type'] is 'gamma':
-        fh.write('  %d\n' % len(p['kpts']))
-        for v in p['kpts']:
-            fh.write('   %.14f %.14f %.14f %.14f\n' % tuple(v))
-            
+        write_q_path(fh,p['qpath'],p['points'])
+    fh.close()
+    
+    
+def write_bands_in(d,a,p):
+    p=p.copy()
+    p.update({'iofile':'bands',
+                'calc':'bands',
+                'kpt_type':'tpiba_b' })
+    write_pw_in(d,a,p)
+    p.update({'kpt_type':'automatic'})
+    
+    
+def write_edos_in(d,a,p):
+
+    edos_pp_in='''&DOS
+    prefix = '%(prefix)s',
+    outdir = '%(outdir)s',
+    fildos = '%(prefix)s.edos'
+    /
+    '''
+    
+    p=p.copy()
+    if not ('occupations' in p.keys()) :
+        p.update({'occupations':'tetrahedra'})
+    
+    p.update({'iofile':'edos',
+                'calc':'nscf',
+                'kpt_type':'edos'})
+    write_pw_in(d,a,p)
+    
+    fh=open(os.path.join(d,'edos_pp.in'),'w')
+    fh.write(edos_pp_in % p)
     fh.close()
     
 
-# PH input file
-ph_in='''
-%(calc)s
-&INPUTPH
-    prefix = '%(prefix)s',
-    outdir = './%(outdir)s/',
-    ldisp = .true.,
-    fildrho = 'fildrho',
-    fildvscf = 'fildvscf',
-    nq1 = %(nq1)d , nq2 = %(nq2)d , nq3 = %(nq3)d
- /
-'''
+
 
 def write_ph_in(d,a,p):
+    # PH input file
+    ph_in='''
+    %(calc)s
+    &INPUTPH
+        prefix = '%(prefix)s',
+        outdir = './%(outdir)s/',
+        ldisp = .true.,
+        fildrho = 'fildrho',
+        fildvscf = 'fildvscf',
+        nq1 = %(nq1)d , nq2 = %(nq2)d , nq3 = %(nq3)d
+     /
+    '''
     p=p.copy()
     qpts=p['qpts']
     p.update({'nq1':qpts[0],'nq2':qpts[1],'nq3':qpts[2]})
@@ -314,15 +356,16 @@ def write_ph_in(d,a,p):
     fh.write( ph_in % p )
     fh.close()
 
-q2r_in='''
-&INPUT
-    fildyn='matdyn',
-    zasr='%(asr)s',
-    flfrc='%(prefix)s.fc'
-/
-'''
 
 def write_q2r_in(d,a,p):
+    q2r_in='''
+    &INPUT
+        fildyn='matdyn',
+        zasr='%(asr)s',
+        flfrc='%(prefix)s.fc'
+    /
+    '''
+
     p=p.copy()
     qpts=p['qpts']
     p.update({'nq1':qpts[0],'nq2':qpts[1],'nq3':qpts[2]})
@@ -330,51 +373,55 @@ def write_q2r_in(d,a,p):
     fh.write( q2r_in % p )
     fh.close()
 
-matdyn_in='''
-&input
-    asr='%(asr)s',  
-    flfrc='%(prefix)s.fc', 
-    flfrq='%(prefix)s.freq',
-    q_in_band_form=.true.
-/
-'''
+
+def write_q_path(fh,path,points):
+    path=array(path)
+    fh.write( ' %d\n' % (len(path)))
+    t=[]
+    dt=[]
+    s=0
+    for x in [0]+map(norm,path[1:]-path[:-1]):
+        s+=x
+        t.append(s)
+        dt.append(x)
+    s=sum(dt)
+    step=s/points
+    for dist,q in zip(dt[1:]+[0],path):
+        #print tuple(list(q)+[p['points']])
+        fh.write(' %f %f %f   %d\n' % tuple(list(q)+[round(dist/step)]))
+    
 
 def write_matdyn_in(d,a,p):
+    matdyn_in='''
+    &input
+        asr='%(asr)s',  
+        flfrc='%(prefix)s.fc', 
+        flfrq='%(prefix)s.freq',
+        q_in_band_form=.true.
+    /
+    '''
     p=p.copy()
     qpts=p['qpts']
     p.update({'nq1':qpts[0],'nq2':qpts[1],'nq3':qpts[2]})
     fh=open(os.path.join(d,'matdyn.in'),'w')
     fh.write( matdyn_in % p )
-    fh.write( ' %d\n' % (len(p['qpath'])))
-    qp=p['qpath']
-    t=[]
-    dt=[]
-    s=0
-    for x in [0]+map(norm,qp[1:]-qp[:-1]):
-        s+=x
-        t.append(s)
-        dt.append(x)
-    s=sum(dt)
-    step=s/p['points']
-    for dist,q in zip(dt[1:]+[0],p['qpath']):
-        #print tuple(list(q)+[p['points']])
-        fh.write(' %f %f %f   %d\n' % tuple(list(q)+[round(dist/step)]))
+    write_q_path(fh,p['qpath'],p['points'])
     fh.close()
 
-phdos_in='''
-&input
-    dos=.true.
-    asr='%(asr)s',  
-    flfrc='%(prefix)s.fc', 
-    fldos='%(prefix)s.dos',
-    nk1=%(nk1)d,
-    nk2=%(nk2)d,
-    nk3=%(nk3)d,
-    ndos=%(ndos)d
- /
-'''
 
 def write_phdos_in(d,a,p):
+    phdos_in='''
+    &input
+        dos=.true.
+        asr='%(asr)s',  
+        flfrc='%(prefix)s.fc', 
+        fldos='%(prefix)s.dos',
+        nk1=%(nk1)d,
+        nk2=%(nk2)d,
+        nk3=%(nk3)d,
+        ndos=%(ndos)d
+     /
+    '''
     p=p.copy()
     qpts=p['qpts']
     nkdos=p['nkdos']

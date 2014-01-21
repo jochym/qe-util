@@ -57,9 +57,10 @@ class QuantumEspresso(FileIOCalculator):
 
     """
 
-    implemented_properties = ['energy', 'forces', 'stress']
+    implemented_properties = ['energy', 'forces', 'stress','phdos','edos']
     
-    pw_cmd='mpiexec -n %(procs)d  pw.x <pw.in >pw.out'
+    pw_cmd='mpiexec -n %(procs)d  pw.x <%(iofile)s.in >%(iofile)s.out'
+    edos_cmd='mpiexec -n %(procs)d  dos.x <edos_pp.in >edos_pp.out'
     ph_cmd='mpiexec -n %(procs)d  ph.x <ph.in >ph.out'
     matdyn_cmd='mpiexec -n %(procs)d matdyn.x <matdyn.in >matdyn.out'
     phdos_cmd= 'mpiexec -n %(procs)d matdyn.x <phdos.in  >phdos.out'
@@ -69,8 +70,9 @@ class QuantumEspresso(FileIOCalculator):
         'scf': pw_cmd,
         'ph': ph_cmd,
         'matdyn': matdyn_cmd,
-        'dos': phdos_cmd,
-        'q2r': q2r_cmd
+        'phdos': phdos_cmd,
+        'q2r': q2r_cmd,
+        'edos': edos_cmd
     }
 
     default_parameters = {
@@ -114,9 +116,31 @@ class QuantumEspresso(FileIOCalculator):
         params=params.copy()
         params.update({'prop': prop})
         cmd=''
-        if set(['energy','stress','forces']) & set(prop):
+        if set(['energy','stress','forces','bands','edos']) & set(prop):
+            params.update({'iofile':'pw'})
             cmd+= self.pw_cmd % params
             cmd+='\n'
+        if 'bands' in prop :
+            params.update({'iofile':'bands','calc':'bands'})
+            cmd+= self.pw_cmd % params
+            cmd+='\n'
+            # Move the result to the .bands directory 
+            # Removing the previous .bands dir first
+            cmd+=('rm -rf "' + os.path.join(params['outdir'],self.prefix+'.bands') + '"\n')
+            cmd+=('cp -r ' + os.path.join(params['outdir'],self.prefix+'.save') + 
+                ' ' + os.path.join(params['outdir'],self.prefix+'.bands') + ' \n')
+        if 'edos' in prop :
+            params.update({'iofile':'edos','calc':'nscf'})
+            cmd+= self.pw_cmd % params
+            cmd+='\n'
+            cmd+= self.edos_cmd % params
+            cmd+='\n'
+            # Move the result to the .edos directory
+            # Removing the previous .edos dir first
+            cmd+=('rm -rf "' + os.path.join(params['outdir'],self.prefix+'.edos') + '"\n')
+            cmd+=('cp -r ' + os.path.join(params['outdir'],self.prefix+'.save') + 
+                ' ' + os.path.join(params['outdir'],self.prefix+'.edos') + ' \n')
+        params.update({'calc':'scf'})
         if 'd2' in prop :
             cmd+= self.ph_cmd % params
             cmd+='\n'
@@ -128,6 +152,7 @@ class QuantumEspresso(FileIOCalculator):
         if 'phdos' in prop :
             cmd+= self.phdos_cmd % params
             cmd+='\n'
+        #print cmd
         return cmd
             
 
@@ -169,8 +194,12 @@ class QuantumEspresso(FileIOCalculator):
         self.atoms2params()
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
         
-        if set(['energy','stress','forces']) & set(properties) :
+        if set(['energy','stress','forces','bands','edos']) & set(properties) :
             write_pw_in(self.directory, atoms, self.parameters)
+        if 'bands' in properties :
+            write_bands_in(self.directory, atoms, self.parameters)
+        if 'edos' in properties:
+            write_edos_in(self.directory, atoms, self.parameters)
         if 'd2' in properties :
             write_ph_in(self.directory, atoms, self.parameters)
             write_q2r_in(self.directory, atoms, self.parameters)
@@ -178,6 +207,7 @@ class QuantumEspresso(FileIOCalculator):
             write_matdyn_in(self.directory, atoms, self.parameters)
         if 'phdos' in properties:
             write_phdos_in(self.directory, atoms, self.parameters)
+        
 
 
 
@@ -209,6 +239,22 @@ class QuantumEspresso(FileIOCalculator):
                 if 'atoms_forces' in rk :
                     # Translate from the Ry/au of QE to the eV/A units of ASE
                     self.results['forces']=array(self.results['atoms_forces'])/(ase.units.Rydberg/ase.units.Bohr)
+
+                try :
+                    fn=os.path.join(self.directory,self.parameters['outdir'],self.prefix+'.bands','data-file.xml')
+                    bands=read_quantumespresso_xmloutput(fn,'all')
+                    # The result is in Hartree. How many energy units these italians will use?!
+                    self.results['bands']=2*ase.units.Rydberg*array(bands['kpoints_eigenvalues']).T
+                    self.results['bands_kpt']=array(bands['kpoints_coordinates'])
+                except (IOError, KeyError, IndexError) :
+                    # No bands - do nothing
+                    pass
+
+                try :
+                    self.results['edos']=np.loadtxt(os.path.join(self.directory,self.prefix+'.edos')).T
+                except IOError:
+                    # No edos data. We assume there is none and silently
+                    pass
 
                 try :
                     self.results['phdos']=np.loadtxt(os.path.join(self.directory,self.prefix+'.dos')).T
