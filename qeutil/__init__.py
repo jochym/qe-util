@@ -102,9 +102,12 @@ class QuantumEspresso(FileIOCalculator):
         self.prefix=label
         self.wdir=wdir
         if restart :
+            # Restart mode - prevent any write operations
             self.directory=restart
+            self.restart=True
         else :
             self.directory=make_calc_dir(self.prefix,wdir)
+            self.restart=False
         self.submited=False
 
     def copy(self):
@@ -113,6 +116,13 @@ class QuantumEspresso(FileIOCalculator):
         return c
 
     def build_command(self, prop=['energy'], params={}):
+        '''
+        Build a propper QE command for the execution of a set of tasks.
+        '''
+        # This is restarted calculation do not write anything.
+        # We should not be even here. Return empty command.
+        if self.restart : return ''
+        
         params=params.copy()
         params.update({'prop': prop})
         cmd=''
@@ -157,39 +167,38 @@ class QuantumEspresso(FileIOCalculator):
             
 
     def run_calculation(self, atoms, properties, system_changes):
-        #print self.command
+        '''
+        Hook for the more involved remote calculator to link into.
+        Actually invokes the parent calculation routine.
+        '''
+        # This is restarted calculation do not write anything.
+        # Nothing to do - just return.
+        if self.restart : return
+        
         FileIOCalculator.calculate(self, atoms, properties, system_changes)
 
     def calculate(self, atoms=None, properties=['energy'],
                   system_changes=all_changes):
-
-            self.command=self.build_command(properties,self.parameters)
-            self.run_calculation(atoms, properties, system_changes)
+        '''
+        Standard calculation interface
+        '''
+        # This is restarted calculation do not write anything.
+        # Just read the results.
+        if self.restart : 
+            self.read_results()
+            return
         
-#        if {'energy','stress'} & set(properties) :
-#            self.command=self.build_command(properties,self.parameters)
-#            prop=list({'energy','stress'} & set(properties))
-#            self.run_calculation(atoms, prop, system_changes)
-#        elif 'bands' in properties :
-#            raise NotImplementedError
-#        elif 'd2' in properties :
-#            self.command=self.build_command(['d2'],self.parameters)
-#            self.run_calculation(atoms, ['d2'], system_changes)
-#        elif 'frequencies' in properties :
-#            self.command=self.build_command(['frequencies'],self.parameters)
-#            self.run_calculation(atoms, ['frequencies'], system_changes)
-#        elif 'phdos' in properties :
-#            self.command=self.build_command(['phdos'],self.parameters)
-#            self.run_calculation(atoms, ['phdos'], system_changes)
-#        else :
-#            raise NotImplementedError
-
+        self.command=self.build_command(properties,self.parameters)
+        self.run_calculation(atoms, properties, system_changes)
 
     def write_input(self, atoms=None, properties=None, system_changes=None):
         """
         Write input file(s). This is called by FileIOCalculator just before 
         it executes the external command.
         """
+        # This is restarted calculation do not write anything.
+        if self.restart : return
+        
         self.set(prefix=self.prefix)
         self.atoms2params()
         FileIOCalculator.write_input(self, atoms, properties, system_changes)
@@ -279,7 +288,12 @@ class QuantumEspresso(FileIOCalculator):
         Celaning procedure. Non-functional for now.
         We need to decide which files should be left intact.
         '''
-        pass
+        # This is restarted calculation do not write anything.
+        # And do not clean anything.
+        if self.restart : return
+        
+        # Cleaning to be implemented 
+        return
         
     def atoms2params(self):
         '''
@@ -292,6 +306,12 @@ class QuantumEspresso(FileIOCalculator):
 
 
 class RemoteQE(QuantumEspresso):
+    '''
+    Remote calculator class for Quantum Espresso.
+    This class is only involved with the machanics of remotly executing
+    the software and transporting the data. Any extensions concerning 
+    actual calculation should be done in the QuantumEspresso class.
+    '''
     
     # Queue system submit command
     qsub_tool='qsub'
@@ -454,10 +474,6 @@ class RemoteQE(QuantumEspresso):
             if ln.find('JOB DONE.')>-1 :
                 # Job is done we can read the output
                 r=read_quantumespresso_textoutput(fn)
-                self.results['energy']=r['etotal']/Rydberg
-                s=array(r['stress'])* 1e-1 * ase.units.GPa
-                self.results['stress']=array([s[0, 0], s[1, 1], s[2, 2],
-                                       s[1, 2], s[0, 2], s[0, 1]])
                 self.submited=False
                 self.jobid=None
             else :
@@ -467,7 +483,7 @@ class RemoteQE(QuantumEspresso):
             # Job not ready.
             raise CalcNotReadyError
         
-        # All is fine - read the results
+        # All is fine - really read the results
         QuantumEspresso.read_results(self)
 
     @classmethod
