@@ -304,11 +304,11 @@ def analyze_QHA_run(Calc, Tmin=1, Tmax=1500, Tsteps=100):
     return array(qha)
     #legend();
 
-
-def bm_eos(v,p):
-    e0,v0,b0,b0p=p
+def bm_eos(v,e0,v0,b0,b0p):
+    #e0,v0,b0,b0p=p
     x=(v0/v)**(2.0/3)
     return e0+(9*v0*b0/16)*(b0p*(x - 1)**3+(6-4*x)*((x-1)**2))
+
 
 def fit_and_plot_QHA(qha,P=0.0,nop=20, eos_fun=bm_eos):
     '''
@@ -325,7 +325,9 @@ def fit_and_plot_QHA(qha,P=0.0,nop=20, eos_fun=bm_eos):
     Output
     ======
         
-        array containing: T, V(T), E(T), B(T), B'(T) along the isobar
+        array containing: T, V(T), E(T), B(T), B'(T) along the isobar 
+        and the diagonal of the covariance matrix of the fitted values 
+        as next four items.
     
     '''
     
@@ -341,18 +343,15 @@ def fit_and_plot_QHA(qha,P=0.0,nop=20, eos_fun=bm_eos):
         if t in plots :
             plot(v,G,'+',label="T=%.0fK"%(qha[0,t,1],));
         p0=[-1800,(max(v)+min(v))/2,200,1]
-        fit,succ=optimize.leastsq(eos_err, p0[:], args=(v,G))
-        if not succ : 
-            print succ
-            continue
+        fit,fit_cov=optimize.curve_fit(eos_fun, v, G, p0[:])
         xmi=min(v)*0.995
         xma=max(v)*1.005
         x=linspace(xmi, xma, 100)
         if t in plots:
-            plot(x,eos_fun(x,fit),'-')
-            plot(fit[1],fit[0],'r.')
+            plot(x,eos_fun(x,fit[0],fit[1],fit[2],fit[3]),'-')
+            errorbar(fit[1],fit[0],xerr=sqrt(fit_cov[1,1]),fmt='r.')
         # Add the fitting results T, V(T), E(T), B(T), B'(T) to the collection
-        V0.append([qha[0,t,1],fit[1],fit[0],fit[2],fit[3]])
+        V0.append([qha[0,t,1],fit[1],fit[0],fit[2],fit[3]]+list(diag(fit_cov)))
         #print succ, fit
     xlabel('Primitive Cell volume ($\AA^3$)')
     ylabel('Gibbs free energy (eV)')
