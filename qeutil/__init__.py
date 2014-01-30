@@ -1,10 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-"""This module defines an interface to Quantum-Espresso.
-http://www.quantum-espresso.org/
-"""
-
 #    Copyright 1998-2014 by Paweł T. Jochym <pawel.jochym@ifj.edu.pl>
 #
 #    qe-util is free software: you can redistribute it and/or modify
@@ -18,7 +14,7 @@ http://www.quantum-espresso.org/
 #    GNU General Public License for more details.
 
 #    You should have received a copy of the GNU General Public License
-#    along with Elastic.  If not, see <http://www.gnu.org/licenses/>.
+#    along with QE-util.  If not, see <http://www.gnu.org/licenses/>.
 
 
 import os
