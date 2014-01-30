@@ -1,3 +1,11 @@
+#
+# This code is taken from the code by Luca Tornatore
+# (C) Luca Tornatore   http://qe-forge.org/gf/user/tornatore/
+# This is not used by the qe-util library and is kept here
+# for reference and verification.
+#
+
+
 """
 This module defines an ASE interface to QUANTUM-ESPRESSO
 
