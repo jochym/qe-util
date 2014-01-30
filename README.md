@@ -2,7 +2,9 @@ qe-util
 =======
 
 Set of utilities for using Quantum-Espresso with ASE and ipython notebooks.
-Modelled after recommended ASE FileIOCalculator.
+Modelled after recommended ASE FileIOCalculator. Part of this code is derived 
+from the [ASE interface fo QE](http://qe-forge.org/gf/project/ase_qe_intrfce/) 
+written by Luca Tornatore.
 
 Installation
 ------------
