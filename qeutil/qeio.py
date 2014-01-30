@@ -1,3 +1,9 @@
+#
+# Large parts of this code are derived from the code by Luca Tornatore
+# (C) Luca Tornatore   http://qe-forge.org/gf/user/tornatore/
+# (C) Pawel T. Jochym  http://wolf.ifj.edu.pl/jochym/
+#
+
 """
 This module contains functionality for the QUANTUM ESPRESSO calculator
 in order to:
