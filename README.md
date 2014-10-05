@@ -1,21 +1,26 @@
 qe-util
 =======
 
+[![Binstar Badge](https://binstar.org/jochym/qeutil/badges/version.svg)](https://binstar.org/jochym/qeutil)
+[![Binstar Badge](https://binstar.org/jochym/qeutil/badges/license.svg)](https://binstar.org/jochym/qeutil)
+[![Binstar Badge](https://binstar.org/jochym/qeutil/badges/downloads.svg)](https://binstar.org/jochym/qeutil)
+
 Set of utilities for using Quantum-Espresso with ASE and ipython notebooks.
 Modelled after recommended ASE FileIOCalculator. Part of this code is derived 
 from the [ASE interface fo QE](http://qe-forge.org/gf/project/ase_qe_intrfce/) 
 written by [Luca Tornatore](http://qe-forge.org/gf/user/tornatore/).
 
-Installation
+Installation [![Binstar Badge](https://binstar.org/jochym/qeutil/badges/installer/conda.svg)](https://conda.binstar.org/jochym)
 ------------
 
 Since the package is an extension to ASE you need to install 
 this library first. Go to the ASE website for instructions.
 
-The best way to install the release of qeutil is to use pip 
-(possibly in virtualenv):
+The best way to install the release of qeutil is to use conda
+package manager and my binstar packages 
+:
 
-        pip install qeutil
+        conda install -c https://conda.binstar.org/jochym qeutil
 
 ----------------------------------------
 
@@ -24,3 +29,5 @@ Research Council of Canada, University of Saskatchewan, and the Department of Co
 Material Science of the Institute of Nuclear Physics, PAN, Cracow, Poland. 
 The access to high performance supercomputers provided by Compute Canada 
 (CLUMEQ and Westgrid) is acknowledged.*
+
+
