@@ -1,4 +1,4 @@
-qe-util
+qe-util [![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.18760.svg)](http://dx.doi.org/10.5281/zenodo.18760)
 =======
 
 [![Binstar Badge](https://binstar.org/jochym/qeutil/badges/version.svg)](https://binstar.org/jochym/qeutil)
