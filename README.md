@@ -4,6 +4,7 @@ qe-util [![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.18760.svg)](http://d
 [![Binstar Badge](https://binstar.org/jochym/qeutil/badges/version.svg)](https://binstar.org/jochym/qeutil)
 [![Binstar Badge](https://binstar.org/jochym/qeutil/badges/license.svg)](https://binstar.org/jochym/qeutil)
 [![Binstar Badge](https://binstar.org/jochym/qeutil/badges/downloads.svg)](https://binstar.org/jochym/qeutil)
+[![Research software impact](http://depsy.org/api/package/pypi/qeutil/badge.svg)](http://depsy.org/package/python/qeutil)
 
 Set of utilities for using Quantum-Espresso with ASE and ipython notebooks.
 Modelled after recommended ASE FileIOCalculator. Part of this code is derived 
