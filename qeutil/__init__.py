@@ -50,6 +50,13 @@ class QuantumEspresso(FileIOCalculator):
 
     The default parameters are very close to those that 
     the QE Fortran code would use.  These are the exceptions::
+    
+    The location of the pseudo potentials is by default
+      /usr/share/espresso/pseudo
+    or set from the ESPRESSO_PP_PATH environment variable
+    
+    The executables are by default pw.x, dos.x ph.x matdyn.x and q2r.x
+    The calculation can use mpi parallelisation with property 'procs'.
 
     """
 
@@ -76,7 +83,7 @@ class QuantumEspresso(FileIOCalculator):
                 'outdir': 'tmp',
                 'wfcdir': 'tmp',
                 'asr':'crystal',
-                'pseudo_dir': '../pspot',
+                'pseudo_dir': '/usr/share/espresso/pseudo',
                 'ndos': 200,
                 'points': 100,
                 'tstress': True,
@@ -84,7 +91,7 @@ class QuantumEspresso(FileIOCalculator):
                 'ecutwfc': 50,
                 'ibrav': 0,
                 'pp_type': 'nc',
-                'pp_format': 'ncpp',
+                'pp_format': 'UPF',
                 'use_symmetry': True,
                 'kpt_type': 'automatic',
                 'kpt_shift': [0,0,0],
@@ -105,6 +112,13 @@ class QuantumEspresso(FileIOCalculator):
             self.directory=make_calc_dir(self.prefix,wdir)
             self.restart=False
         self.submited=False
+        # override parameters with environment variables
+        if 'ESPRESSO_PP_PATH' in os.environ:
+            self.parameters['pseudo_dir'] = os.environ['ESPRESSO_PP_PATH']
+        elif 'ESPRESSO_PSEUDO' in os.environ:
+            self.parameters['pseudo_dir'] = os.environ['ESPRESSO_PSEUDO']
+        if 'ASE_ESPRESSO_COMMAND' in os.environ:
+            pw_cmd=os.environ['ASE_ESPRESSO_COMMAND']
 
     def copy(self):
         c=copy.deepcopy(self)

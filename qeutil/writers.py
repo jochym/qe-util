@@ -27,6 +27,8 @@ from numpy import array
 from math import sqrt
 from ase import Atoms
 
+import glob
+
 # PWscf input file
 # not used - just a comment
 #pw_in='''
@@ -280,8 +282,58 @@ def write_pw_in(d,a,p):
     xc=p['xc']
     pp_type=p['pp_type']
     pp_format=p['pp_format']
+    # we check if the desired potential exists. Get the PP locations
+    if 'ESPRESSO_PSEUDO' in os.environ:
+        pppaths = os.environ['ESPRESSO_PSEUDO']
+    else:
+        pppaths = p['pseudo_dir']  # default
+    pppaths = pppaths.split(':')
+    # search for element PP in each location (in principle with QE only one location)
     for nm, mass in set(zip(cr.get_chemical_symbols(),cr.get_masses())):
-        fh.write("    %s %g %s_%s_%s.%s \n" % (nm, mass, nm, xc, pp_type, pp_format))
+        name = "%s_%s_%s.%s" % (nm, xc, pp_type, pp_format)
+        found = False
+        
+        for path in pppaths:
+            filename = os.path.join(path, name)
+
+            match = glob.glob(filename)
+            if match: # the exact name as expected
+                found = True
+                name = match[0]
+                
+            if not found: # a more permissive name with element.*.format
+                name = "%s.*.%s" % (nm, pp_format)
+                filename = os.path.join(path, name)
+                match = glob.glob(filename)
+                if match:
+                    found = True
+                    name = match[0] # the first match
+            if not found: # a more permissive name with element_*.format
+                name = "%s_*.%s" % (nm, pp_format)
+                filename = os.path.join(path, name)
+                match = glob.glob(filename)
+                if match:
+                    found = True
+                    name = match[0] # the first match
+            if not found: # a more permissive name with just the element_*
+                name = "%s_*" % (nm)
+                filename = os.path.join(path, name)
+                match = glob.glob(filename)
+                if match:
+                    found = True
+                    name = match[0] # the first match
+            if not found: # a more permissive name with just the element.*
+                name = "%s.*" % (nm)
+                filename = os.path.join(path, name)
+                match = glob.glob(filename)
+                if match:
+                    found = True
+                    name = match[0] # the first match
+
+        if not found:
+            raise RuntimeError('Espresso: No pseudopotential for %s. Aborting.' % nm)
+        
+        fh.write("    %s %g %s \n" % (nm, mass, os.path.basename(name)))
 
     # ----------------------------------------------------------
     # Card: ATOMIC_POSITIONS
