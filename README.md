@@ -1,9 +1,9 @@
 qe-util [![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.18760.svg)](http://dx.doi.org/10.5281/zenodo.18760)
 =======
 
-[![Binstar Badge](https://binstar.org/jochym/qeutil/badges/version.svg)](https://binstar.org/jochym/qeutil)
-[![Binstar Badge](https://binstar.org/jochym/qeutil/badges/license.svg)](https://binstar.org/jochym/qeutil)
-[![Binstar Badge](https://binstar.org/jochym/qeutil/badges/downloads.svg)](https://binstar.org/jochym/qeutil)
+[![Binstar Badge](https://anaconda.org/jochym/qeutil/badges/version.svg)](https://anaconda.org/jochym/qeutil)
+[![Binstar Badge](https://anaconda.org/jochym/qeutil/badges/license.svg)](https://anaconda.org/jochym/qeutil)
+[![Binstar Badge](https://anaconda.org/jochym/qeutil/badges/downloads.svg)](https://anaconda.org/jochym/qeutil)
 [![Research software impact](http://depsy.org/api/package/pypi/qeutil/badge.svg)](http://depsy.org/package/python/qeutil)
 
 Set of utilities for using Quantum-Espresso with ASE and ipython notebooks.
@@ -11,7 +11,7 @@ Modelled after recommended ASE FileIOCalculator. Part of this code is derived
 from the [ASE interface fo QE](http://qe-forge.org/gf/project/ase_qe_intrfce/) 
 written by [Luca Tornatore](http://qe-forge.org/gf/user/tornatore/).
 
-Installation [![Binstar Badge](https://binstar.org/jochym/qeutil/badges/installer/conda.svg)](https://conda.binstar.org/jochym)
+Installation [![Binstar Badge](https://anaconda.org/jochym/qeutil/badges/installer/conda.svg)](https://conda.anaconda.org/jochym)
 ------------
 
 Since the package is an extension to ASE you need to install 
@@ -21,7 +21,7 @@ The best way to install the release of qeutil is to use conda
 package manager and my binstar packages 
 :
 
-        conda install -c https://conda.binstar.org/jochym qeutil
+        conda install -c jochym qeutil
 
 ----------------------------------------
 
