@@ -276,7 +276,7 @@ class QuantumEspresso(FileIOCalculator):
                 if 'atoms_forces' in rk:
                     # Translate from the Ry/au of QE to the eV/A units of ASE
                     try :
-                        self.results['forces']=array(self.results['atoms_forces'])/(ase.units.Rydberg/ase.units.Bohr)
+                        self.results['forces']=array(self.results['atoms_forces'])*(ase.units.Rydberg/ase.units.Bohr)
                     except TypeError :
                         # atoms_forces are none - ignore.
                         pass
