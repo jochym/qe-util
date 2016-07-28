@@ -238,7 +238,8 @@ def write_pw_in(d,a,p):
         p['ibrav']=0
     fh.write("    nat = %d,\n" % (cr.get_number_of_atoms()))
     fh.write("    ntyp = %d,\n" % (len(set(cr.get_atomic_numbers()))))
-    pwin_k=['ecutwfc','ibrav','nbnd','occupations']
+    pwin_k=['ecutwfc','ibrav','nbnd','occupations','degauss','smearing','ecutrho','nbnd']
+    # must also take into account degauss and smearing
     write_section_params(fh, pwin_k, p)
     fh.write(' /\n')
 
@@ -247,6 +248,10 @@ def write_pw_in(d,a,p):
     # ----------------------------------------------------------
 
     fh.write(' &ELECTRONS\n')
+    # must also take into account mixing_beta mixing_mode and diagonalization
+    pwin_k=['conv_thr','mixing_beta','mixing_mode','diagonalization',
+        'mixing_ndim','electron_maxstep']
+    write_section_params(fh, pwin_k, p)
     fh.write(' /\n')
 
     # ----------------------------------------------------------
