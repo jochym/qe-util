@@ -50,7 +50,7 @@ class QEpw:
 
     def __init__(self, atoms=None, label='pw', xc='scf', nstep=50, etot_conv_thr=1.0e-4,       #CONTROL
                  restart_mode=None, tstress=None, prefix='pwscf',
-                 dt=None, pseudodir=None,
+                 dt=None, pseudodir=None, tprnfor=None,
                  ibrav=0, cell_parameters_units=None, celldm=None, crystal = None,nbands=None, #SYSTEM
                  ecutwfc=None, ecutrho=None, occupations=None,
                  input_dft=None, smearing='gauss', degauss=None, nspin=None,
@@ -92,6 +92,10 @@ class QEpw:
         pseudodir: str
             directory containing pseudopotential files
             Default is value of the $ESPRESSO_PSEUDO environment variable if set; '$HOME/espresso/pseudo/' otherwise 
+        tstress: logical
+            calculate stress
+        tprnfor: logical
+            calculate forces
 
         ---------- SYSTEM section
 
@@ -231,6 +235,10 @@ class QEpw:
         if not tstress is None:
             self.set_inp_control('tstress', tstress)
             self.tstress = tstress
+            
+        if not tprnfor is None:
+            self.set_inp_control('tprnfor', tprnfor)
+            self.tprnfor = tprnfor
 
         if not prefix is None:                              # in case it is not given, default will be use by the code.
             self.prefix = prefix

@@ -57,6 +57,19 @@ class QuantumEspresso(FileIOCalculator):
     
     The executables are by default pw.x, dos.x ph.x matdyn.x and q2r.x
     The calculation can use mpi parallelisation with property 'procs'.
+    
+    Supported parameters:
+      'kpts','use_symmetry','procs','label'
+      CONTROL
+        'calc','pseudo_dir'
+        'tstress', 'tprnfor','nstep','pseudo_dir','outdir',
+        'wfcdir', 'prefix','forc_conv_thr', 'etot_conv_thr'
+      SYSTEM
+        'ecutwfc','ibrav','nbnd','occupations','degauss','smearing','ecutrho','nbnd'
+      ELECTRONS
+        'conv_thr','mixing_beta','mixing_mode','diagonalization',
+        'mxing_ndim','electron_maxstep'
+      
 
     """
 
@@ -245,9 +258,14 @@ class QuantumEspresso(FileIOCalculator):
                 self.results_xml={}
                 self.results_xml.update(read_quantumespresso_xmloutput(xml_fn,'all'))
                 self.results['energy']=r['etotal']*Rydberg
-                s=-array(r['stress'])* 1e-1 * ase.units.GPa
-                self.results['stress']=array([s[0, 0], s[1, 1], s[2, 2],
+                try:
+                  s=-array(r['stress'])* 1e-1 * ase.units.GPa
+                  self.results['stress']=array([s[0, 0], s[1, 1], s[2, 2],
                                        s[1, 2], s[0, 2], s[0, 1]])
+                except TypeError :
+                  # stress is none - ignore.
+                  pass
+                        
                 rk=self.results.keys()
                 if 'cell' in rk :
                     try :
