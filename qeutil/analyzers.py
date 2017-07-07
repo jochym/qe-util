@@ -19,20 +19,20 @@
 #    You should have received a copy of the GNU General Public License
 #    along with QE-util.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import division
-from numpy import array
-import numpy
-from numpy.linalg import norm
-from pylab import *
+from __future__ import division, print_function
 
+import numpy
+from numpy import array
+from numpy.linalg import norm
+from scipy import optimize
 from scipy.integrate import simps
 from numpy import sinh, tanh, log
-from scipy import optimize
+
+from pylab import *
+
 
 from scipy.constants import Boltzmann, Avogadro, electron_volt
 from ase.units import Rydberg,  eV, GPa
-from scipy.integrate import simps
-from numpy import sinh, tanh, log
 # search spglib with 'new' and 'old' syntax
 try:
     import spglib
@@ -306,7 +306,7 @@ def analyze_QHA_run(Calc, Tmin=1, Tmax=1500, Tsteps=100):
         # Put in special case for the T=0. Just ZPV energy.
         qhav=[[V,0,Etot,F0,0,0,0,0]]
         qha.append(qhav)
-        print '# %s: V=%.2f A^3, Etot=%.3f eV, P=%6.1f GPa' % (n, V, Etot, P/GPa)
+        print('# %s: V=%.2f A^3, Etot=%.3f eV, P=%6.1f GPa' % (n, V, Etot, P/GPa))
         for T in linspace(Tmin,Tmax,Tsteps):
             # Maradudin book formula - the only one important for thermal expansion
             # The result is in eV, temperature in K
@@ -425,7 +425,7 @@ def fit_and_plot_QHA(qha,P=0.0,nop=20, eos_fun=bm_eos):
 #            # eV/A^3 = 1602.176487 kbar
 #            P=clc['pressure']/1602.176487
 #        except IOError :
-#            print "No DOS for: ",idx
+#            print("No DOS for: ",idx)
 #            continue
 
 #        # Scan the temperatures at this volume 
@@ -471,7 +471,7 @@ def fit_and_plot_QHA(qha,P=0.0,nop=20, eos_fun=bm_eos):
 #        qhav=[[V,0,Etot,F0,0,0,0,0]]
 #    
 #        qha.append(qhav)
-#        print '# %s: V=%f A^3, Etot=%f eV, P=%f eV/A^3' % (idx, V, Etot, P)
+#        print('# %s: V=%f A^3, Etot=%f eV, P=%f eV/A^3' % (idx, V, Etot, P))
 #        for T in linspace(Tmin,Tmax,Tsteps):
 #            # Maradudin book formula - the only one important for thermal expansion
 #            # The result is in eV, temperature in K
