@@ -185,7 +185,8 @@ def read_quantumespresso_textoutput(filename, verbose=False):
 
             if l.rfind('highest occupied') > -1 :
                 t = l.split()
-                Results['HOL'] = float(t[-2])
+                try: Results['HOL'] = float(t[-2]) # sometimes this line has only 1 value
+                except ValueError: pass
                 Results['LUL'] = float(t[-1])
 
             if l.rfind('magnetization') > -1:
