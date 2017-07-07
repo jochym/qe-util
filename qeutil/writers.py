@@ -21,11 +21,15 @@ from __future__ import division
 
 import os
 from tempfile import mkdtemp
-from pyspglib import spglib
 from numpy.linalg import norm
 from numpy import array
 from math import sqrt
 from ase import Atoms
+# import spglib with 'new' and 'old' syntax
+try:
+    import spglib
+except ImportError:
+    from pyspglib import spglib
 
 import glob
 
