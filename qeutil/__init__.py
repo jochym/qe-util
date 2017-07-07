@@ -138,10 +138,14 @@ class QuantumEspresso(FileIOCalculator):
         c.directory=make_calc_dir(c.prefix,c.wdir)
         return c
 
-    def build_command(self, prop=['energy'], params={}):
+    def build_command(self, prop=None, params=None):
         '''
         Build a propper QE command for the execution of a set of tasks.
         '''
+        if prop is None:
+            prop = ['energy']
+        if params is None:
+            params = {}
         # This is restarted calculation do not write anything.
         # We should not be even here. Return empty command.
         if self.restart : return ''
@@ -200,11 +204,13 @@ class QuantumEspresso(FileIOCalculator):
         
         FileIOCalculator.calculate(self, atoms, properties, system_changes)
 
-    def calculate(self, atoms=None, properties=['energy'],
+    def calculate(self, atoms=None, properties=None,
                   system_changes=all_changes):
         '''
         Standard calculation interface
         '''
+        if properties is None:
+            properties = ['energy']
         # This is restarted calculation do not write anything.
         # Just read the results.
         if self.restart : 
@@ -397,7 +403,11 @@ class RemoteQE(QuantumEspresso):
         
         fh.close()
 
-    def build_command(self,prop=['energy'],params={}):
+    def build_command(self,prop=None,params=None):
+        if prop is None:
+            prop = ['energy']
+        if params is None:
+            params = {}
         cmd=self.qsub_cmd % {
             'qsub_tool': self.qsub_tool,
             'qstat_tool': self.qstat_tool,
@@ -412,8 +422,10 @@ class RemoteQE(QuantumEspresso):
          }
         return cmd
 
-    def write_input(self, atoms=None, properties=['energy'], system_changes=all_changes):
+    def write_input(self, atoms=None, properties=None, system_changes=all_changes):
         '''Write input file(s).'''
+        if properties is None:
+            properties = ['energy']
         QuantumEspresso.write_input(self, atoms, properties, system_changes)
         self.write_pbs_in(properties)
         subprocess.call(self.copy_out_cmd % {
@@ -442,7 +454,7 @@ class RemoteQE(QuantumEspresso):
         return not (state in ['Q','R'])
 
 
-    def run_calculation(self, atoms=None, properties=['energy'],
+    def run_calculation(self, atoms=None, properties=None,
                             system_changes=all_changes):
         '''
         Internal calculation executor. We cannot use FileIOCalculator
@@ -453,6 +465,8 @@ class RemoteQE(QuantumEspresso):
         raises the exception to signal that we need to come back for results
         when the job is finished.
         '''
+        if properties is None:
+            properties = ['energy']
         Calculator.calculate(self, atoms, properties, system_changes)
         self.write_input(self.atoms, properties, system_changes)
         if self.command is None:
@@ -519,12 +533,14 @@ class RemoteQE(QuantumEspresso):
         QuantumEspresso.read_results(self)
 
     @classmethod
-    def ParallelCalculate(cls,syslst,properties=['energy'],system_changes=all_changes):
+    def ParallelCalculate(cls,syslst,properties=None,system_changes=all_changes):
         '''
         Run a series of calculations in parallel using (implicitely) some 
         remote machine/cluster. The function returns the list of systems ready
         for the extraction of calculated properties.
         '''
+        if properties is None:
+                properties = ['energy']
         print 'Launching:',
         sys.stdout.flush()
         for n,s in enumerate(syslst):
