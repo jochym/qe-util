@@ -92,10 +92,12 @@ def get_EOS(d, comment=""):
 
 
 def plot_phonons(freq=None, dos=None, 
-                    qpath=array([]), qpname=[], 
+                    qpath=array([]), qpname=None, 
                     exper=None, ax=None, label=None, positive_only=True, **kwargs):
 
 #idx, ex=True, bdir='/home/jochym/Desktop/Fizyka/', qp=array([G1,X,G2,L]), lbl=None, ax=None, castep=False):
+    if qpname is None:
+        qpname = []
     s=0
     t=[]
     for x in [0]+map(norm,qpath[1:]-qpath[:-1]):
@@ -147,9 +149,11 @@ def plot_phonons(freq=None, dos=None,
     
 
 def plot_bands(result=None, show_gap=True,
-                    qpath=array([]), qpname=[], 
+                    qpath=array([]), qpname=None, 
                     ax=None, label=None, **kwargs):
     
+    if qpname is None:
+        qpname = []
     assert(result)
     kpoints=result['bands_kpt']
     energies=result['bands']
