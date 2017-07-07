@@ -50,6 +50,26 @@ class QuantumEspresso(FileIOCalculator):
 
     The default parameters are very close to those that 
     the QE Fortran code would use.  These are the exceptions::
+    
+    The location of the pseudo potentials is by default
+      /usr/share/espresso/pseudo
+    or set from the ESPRESSO_PP_PATH environment variable
+    
+    The executables are by default pw.x, dos.x ph.x matdyn.x and q2r.x
+    The calculation can use mpi parallelisation with property 'procs'.
+    
+    Supported parameters:
+      'kpts','use_symmetry','procs','label'
+      CONTROL
+        'calc','pseudo_dir'
+        'tstress', 'tprnfor','nstep','pseudo_dir','outdir',
+        'wfcdir', 'prefix','forc_conv_thr', 'etot_conv_thr'
+      SYSTEM
+        'ecutwfc','ibrav','nbnd','occupations','degauss','smearing','ecutrho','nbnd'
+      ELECTRONS
+        'conv_thr','mixing_beta','mixing_mode','diagonalization',
+        'mxing_ndim','electron_maxstep'
+      
 
     """
 
@@ -76,7 +96,7 @@ class QuantumEspresso(FileIOCalculator):
                 'outdir': 'tmp',
                 'wfcdir': 'tmp',
                 'asr':'crystal',
-                'pseudo_dir': '../pspot',
+                'pseudo_dir': '/usr/share/espresso/pseudo',
                 'ndos': 200,
                 'points': 100,
                 'tstress': True,
@@ -84,7 +104,7 @@ class QuantumEspresso(FileIOCalculator):
                 'ecutwfc': 50,
                 'ibrav': 0,
                 'pp_type': 'nc',
-                'pp_format': 'ncpp',
+                'pp_format': 'UPF',
                 'use_symmetry': True,
                 'kpt_type': 'automatic',
                 'kpt_shift': [0,0,0],
@@ -105,6 +125,13 @@ class QuantumEspresso(FileIOCalculator):
             self.directory=make_calc_dir(self.prefix,wdir)
             self.restart=False
         self.submited=False
+        # override parameters with environment variables
+        if 'ESPRESSO_PP_PATH' in os.environ:
+            self.parameters['pseudo_dir'] = os.environ['ESPRESSO_PP_PATH']
+        elif 'ESPRESSO_PSEUDO' in os.environ:
+            self.parameters['pseudo_dir'] = os.environ['ESPRESSO_PSEUDO']
+        if 'ASE_ESPRESSO_COMMAND' in os.environ:
+            pw_cmd=os.environ['ASE_ESPRESSO_COMMAND']
 
     def copy(self):
         c=copy.deepcopy(self)
@@ -231,9 +258,14 @@ class QuantumEspresso(FileIOCalculator):
                 self.results_xml={}
                 self.results_xml.update(read_quantumespresso_xmloutput(xml_fn,'all'))
                 self.results['energy']=r['etotal']*Rydberg
-                s=-array(r['stress'])* 1e-1 * ase.units.GPa
-                self.results['stress']=array([s[0, 0], s[1, 1], s[2, 2],
+                try:
+                  s=-array(r['stress'])* 1e-1 * ase.units.GPa
+                  self.results['stress']=array([s[0, 0], s[1, 1], s[2, 2],
                                        s[1, 2], s[0, 2], s[0, 1]])
+                except TypeError :
+                  # stress is none - ignore.
+                  pass
+                        
                 rk=self.results.keys()
                 if 'cell' in rk :
                     try :
@@ -244,7 +276,7 @@ class QuantumEspresso(FileIOCalculator):
                 if 'atoms_forces' in rk:
                     # Translate from the Ry/au of QE to the eV/A units of ASE
                     try :
-                        self.results['forces']=array(self.results['atoms_forces'])/(ase.units.Rydberg/ase.units.Bohr)
+                        self.results['forces']=array(self.results['atoms_forces'])*(ase.units.Rydberg/ase.units.Bohr)
                     except TypeError :
                         # atoms_forces are none - ignore.
                         pass

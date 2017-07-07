@@ -31,9 +31,13 @@ from scipy import optimize
 
 from scipy.constants import Boltzmann, Avogadro, electron_volt
 from ase.units import Rydberg,  eV, GPa
-from pyspglib import spglib
 from scipy.integrate import simps
 from numpy import sinh, tanh, log
+# search spglib with 'new' and 'old' syntax
+try:
+    import spglib
+except ImportError:
+    from pyspglib import spglib
 
 k_B=Boltzmann/electron_volt
 THz2meV=1/0.241799
