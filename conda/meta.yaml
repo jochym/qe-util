@@ -1,6 +1,6 @@
 package:
   name: qeutil
-  version: !!str 0.1.16
+  version: !!str 0.1.17
 
 source:
   git_url: git@github.com:jochym/qe-util.git
@@ -32,9 +32,9 @@ requirements:
     - python
     - numpy
     - scipy
-    - pyspglib
+    - spglib
     - matplotlib
-    - python-ase
+    - ase
     - elastic
 
 test:
