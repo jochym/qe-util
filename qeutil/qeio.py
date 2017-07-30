@@ -236,7 +236,7 @@ def read_quantumespresso_textoutput(filename, verbose=False):
                 CAUGHT_LINES = []
             
             if l.rfind('forces acting on atoms') > -1:                  # find forces acting on atoms
-                CAUGHT = Results['nat']
+                CAUGHT = Results['nat']+3                               # sometimes, warning 'negative rho' shifts forces
                 CAUGHT_DISCARD = 1
                 CAUGHT_WHAT = 'forces'
                 CAUGHT_LINES = []
@@ -295,7 +295,9 @@ def read_quantumespresso_textoutput(filename, verbose=False):
                 Results['atoms_forces'] = []
                 number = len(CAUGHT_LINES)
                 for n in range(number):
-                    Results['atoms_forces'].append([float(get_number(el)) for el in CAUGHT_LINES[n].split()[6:9]])
+                    if len(CAUGHT_LINES[n].split()):
+                        if CAUGHT_LINES[n].split()[0].startswith('atom'):  # make sure we have an 'atom' line
+                            Results['atoms_forces'].append([float(get_number(el)) for el in CAUGHT_LINES[n].split()[6:9]])
 
                 # elif (CAUGHT_WHAT == 'old cell'):
                 #     old_cell = []
