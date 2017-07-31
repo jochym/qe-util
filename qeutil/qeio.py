@@ -333,27 +333,27 @@ def read_quantumespresso_textoutput(filename, verbose=False):
         print "tot magnetizations  : %s " % str(Results['total_magnetization'])
         print "abs magnetizations  : %s " % str(Results['absolute_magnetization'])
         print "ExchangeCorrelation : "
-        if (not Results['ExchangeCorrelation'] is None):
+        if Results['ExchangeCorrelation'] is not None:
             print "%s " % [str(el) for el in Results['ExchangeCorrelation']]
         else:
             print "None"
-        if(not Results['pressure'] is None):
+        if Results['pressure'] is not None:
             print "Pressure is         : %s " % str(Results['pressure'])
-        if(not Results['stress'] is None):  
+        if Results['stress'] is not None:  
             print "Stress is           : %s " % str(Results['stress'])
         print "kpoints found       : %s " % str(Results['kpts_num'])
         print "kpoints are         : "
-        if(not Results['kpts'] is None):
+        if Results['kpts'] is not None:
             for n in range(len(Results['kpts'])):
                 print "\t %s wk: %s" % (str(Results['kpts'][n]), str(Results['kpts_wk'][n]))
-        if(not Results['atoms_forces'] is None):
+        if Results['atoms_forces'] is not None:
             print "forces are          : "
             print Results['atoms_forces']
         print "alat is             : %s" % str(Results['alat'])
-        if (not Results['cell'] is None):
+        if Results['cell'] is not None:
             print "cell is         : "
             print Results['new_cell']
-        if( not Results['atomic_positions'] is None):
+        if Results['atomic_positions'] is not None):
             print "atomic positions    : "
             print Results['new_atomic_positions']
 
