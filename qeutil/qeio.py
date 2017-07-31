@@ -855,8 +855,8 @@ def get_xc_xml(tree, mydict):
     mydict['DFT'] = element.find("DFT").text
     subel = element.find("LDA_PLUS_U_CALCULATION")
    
-   if subel is not None:   # in some cases, the LDA token is not found
-      subel = subel.text.strip()
+    if subel is not None:   # in some cases, the LDA token is not found
+        subel = subel.text.strip()
     
     if subel == 'T':
         
